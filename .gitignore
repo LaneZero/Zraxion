@@ -1,0 +1,37 @@
+﻿# Visual Studio
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Build output
+bin/
+obj/
+artifacts/
+TestResults/
+
+# Packages
+packages/
+*.nupkg
+
+# VSIX output
+*.vsix
+
+# Logs
+*.log
+
+# OS / IDE
+Thumbs.db
+.DS_Store
+.idea/
+.vscode/
+
+# Local / private files
+Private-Phase-Reports/
+private/
+*.private.md
+
+# Temporary
+temp/
+tmp/
