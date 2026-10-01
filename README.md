@@ -1,7 +1,7 @@
-﻿# SsmsToolkit
+﻿# Zraxion
 
-An extension for SQL Server Management Studio 22 focused on productivity,
-results-grid analysis, database administration, and developer tooling.
+Zraxion is an extension for SQL Server Management Studio 22 focused on
+productivity, results-grid analysis, database administration, and developer tooling.
 
 ## Status
 
