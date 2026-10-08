@@ -52,7 +52,10 @@ namespace Zraxion.Extension
             // Register Zraxion commands once.
             await AboutZraxionCommand.InitializeAsync(this);
             await InspectResultsGridCommand.InitializeAsync(this);
+            await SumSelectedCellsCommand.InitializeAsync(this);
         }
+
+       
 
        
 

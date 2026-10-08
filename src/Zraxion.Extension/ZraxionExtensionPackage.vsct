@@ -67,12 +67,26 @@
 			<Strings>
 				<ButtonText>Inspect Results Grid</ButtonText>
 			</Strings>
+		</Button>
+
+		<Button guid="guidZraxionExtensionPackageCmdSet"
+			id="SumSelectedCellsCommandId"
+			priority="0x0120"
+			type="Button">
+
+			<Parent guid="guidZraxionExtensionPackageCmdSet"
+					id="MyMenuGroup" />
+
+			<Strings>
+				<ButtonText>Sum Selected Cells</ButtonText>
+			</Strings>
 		</Button>	
-      <Button guid="guidZraxionExtensionPackageCmdSet" id="cmdidResultsGridProbe" priority="0x0100" type="Button">
+
+      <Button guid="guidZraxionExtensionPackageCmdSet" id="cmdidSumSelectedCellsCommand" priority="0x0100" type="Button">
         <Parent guid="guidZraxionExtensionPackageCmdSet" id="MyMenuGroup" />
-        <Icon guid="guidImages1" id="bmpPic1" />
+        <Icon guid="guidImages2" id="bmpPic1" />
         <Strings>
-          <ButtonText>Invoke ResultsGridProbe</ButtonText>
+          <ButtonText>Invoke SumSelectedCellsCommand</ButtonText>
         </Strings>
       </Button>
     </Buttons>
@@ -85,7 +99,7 @@
             inside a button definition. An important aspect of this declaration is that the element id
             must be the actual index (1-based) of the bitmap inside the bitmap strip. -->
       <Bitmap guid="guidImages" href="Resources\AboutZraxionCommand.png" usedList="bmpPic1, bmpPic2, bmpPicSearch, bmpPicX, bmpPicArrows, bmpPicStrikethrough" />
-      <Bitmap guid="guidImages1" href="Resources\ResultsGridProbe.png" usedList="bmpPic1, bmpPic2, bmpPicSearch, bmpPicX, bmpPicArrows, bmpPicStrikethrough" />
+      <Bitmap guid="guidImages2" href="Resources\SumSelectedCellsCommand.png" usedList="bmpPic1, bmpPic2, bmpPicSearch, bmpPicX, bmpPicArrows, bmpPicStrikethrough" />
     </Bitmaps>
   </Commands>
 
@@ -99,8 +113,18 @@
       <IDSymbol name="AboutZraxionCommandId" value="0x0100" />
 	  <IDSymbol name="InspectResultsGridCommandId" value="0x0101" />
 		
-      <IDSymbol value="4129" name="cmdidResultsGridProbe" />
+      <IDSymbol value="4130" name="cmdidSumSelectedCellsCommand" />
     </GuidSymbol>
+
+	  <GuidSymbol name="guidZraxionExtensionPackageCmdSet"
+            value="{af1b02be-ba8f-4292-9d65-c7399d43c1e5}">
+
+		  <IDSymbol name="MyMenuGroup" value="0x1020" />
+		  <IDSymbol name="AboutZraxionCommandId" value="0x0100" />
+		  <IDSymbol name="InspectResultsGridCommandId" value="0x0101" />
+		  <IDSymbol name="SumSelectedCellsCommandId" value="0x0102" />
+
+	  </GuidSymbol>
 
     <GuidSymbol name="guidImages" value="{9fdb714e-e81d-4022-ad9e-ffc7609e4b63}">
       <IDSymbol name="bmpPic1" value="1" />
@@ -111,7 +135,9 @@
       <IDSymbol name="bmpPicStrikethrough" value="6" />
     </GuidSymbol>
   
-    <GuidSymbol value="{4942666b-c79f-407b-8bf1-819a8e3729eb}" name="guidImages1">
+
+  
+    <GuidSymbol value="{c79c66ee-4a71-48da-8ec5-358404089c31}" name="guidImages2">
       <IDSymbol name="bmpPic1" value="1" />
       <IDSymbol name="bmpPic2" value="2" />
       <IDSymbol name="bmpPicSearch" value="3" />

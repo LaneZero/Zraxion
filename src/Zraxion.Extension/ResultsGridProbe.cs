@@ -1,13 +1,14 @@
-﻿using System;
+﻿using Microsoft.SqlServer.Management.UI.Grid;
+using System;
 using System.Collections.Generic;
-using System.Runtime.InteropServices;
 using System.Diagnostics;
+using System.Globalization;
+using System.Linq;
+using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows.Automation;
 using System.Windows.Forms;
-using System.Linq;
-using System.Reflection;
-using Microsoft.SqlServer.Management.UI.Grid;
 
 
 namespace Zraxion.Extension
@@ -844,6 +845,192 @@ public static string InspectResultsPaneChildren()
 
             return builder.ToString();
         }
+
+        public static string SumSelectedCells()
+        {
+            var process = Process.GetCurrentProcess();
+
+            if (process.MainWindowHandle == IntPtr.Zero)
+            {
+                return "SSMS main window handle was not available.";
+            }
+
+            AutomationElement root;
+
+            try
+            {
+                root = AutomationElement.FromHandle(process.MainWindowHandle);
+            }
+            catch (Exception ex)
+            {
+                return $"Unable to access the SSMS automation root.\n\n{ex.Message}";
+            }
+
+            var resultsPanes = root.FindAll(
+                TreeScope.Descendants,
+                new AndCondition(
+                    new PropertyCondition(
+                        AutomationElement.NameProperty,
+                        "Results"),
+                    new PropertyCondition(
+                        AutomationElement.ControlTypeProperty,
+                        ControlType.Pane)));
+
+            foreach (AutomationElement element in resultsPanes)
+            {
+                try
+                {
+                    if (!element.Current.HasKeyboardFocus)
+                    {
+                        continue;
+                    }
+
+                    var handle = new IntPtr(
+                        element.Current.NativeWindowHandle);
+
+                    if (handle == IntPtr.Zero)
+                    {
+                        continue;
+                    }
+
+                    var control = Control.FromHandle(handle);
+
+                    if (control is not GridControl grid)
+                    {
+                        continue;
+                    }
+
+                    return CalculateSelectionSum(grid);
+                }
+                catch (ElementNotAvailableException)
+                {
+                    // SSMS may rebuild the Results pane while it is being inspected.
+                }
+            }
+
+            return "No focused SSMS Results Grid was detected.";
+        }
+
+
+        private static string CalculateSelectionSum(GridControl grid)
+        {
+            var selectedBlocks = grid.SelectedCells;
+            var storage = grid.GridStorage;
+
+            if (storage is null)
+            {
+                return "The active Results Grid does not expose grid storage.";
+            }
+
+            if (selectedBlocks is null || selectedBlocks.Count == 0)
+            {
+                return "No cells are currently selected.";
+            }
+
+            decimal sum = 0m;
+
+            long selectedCount = 0;
+            long numericCount = 0;
+            long nullOrEmptyCount = 0;
+            long nonNumericCount = 0;
+
+            var styles =
+                NumberStyles.Number |
+                NumberStyles.AllowExponent |
+                NumberStyles.AllowCurrencySymbol;
+
+            foreach (BlockOfCells block in selectedBlocks)
+            {
+                for (long row = block.Y; row <= block.Bottom; row++)
+                {
+                    for (var uiColumn = block.X;
+                         uiColumn <= block.Right;
+                         uiColumn++)
+                    {
+                        selectedCount++;
+
+                        var storageColumn =
+                            grid.GetStorageColumnIndexByUIIndex(uiColumn);
+
+                        if (storageColumn < 0)
+                        {
+                            nonNumericCount++;
+                            continue;
+                        }
+
+                        var rawValue =
+                            storage.GetCellDataAsString(
+                                row,
+                                storageColumn);
+
+                        if (string.IsNullOrWhiteSpace(rawValue) ||
+                            string.Equals(
+                                rawValue.Trim(),
+                                "NULL",
+                                StringComparison.OrdinalIgnoreCase))
+                        {
+                            nullOrEmptyCount++;
+                            continue;
+                        }
+
+                        decimal value;
+
+                        var parsed =
+                            decimal.TryParse(
+                                rawValue,
+                                styles,
+                                CultureInfo.CurrentCulture,
+                                out value)
+                            ||
+                            decimal.TryParse(
+                                rawValue,
+                                styles,
+                                CultureInfo.InvariantCulture,
+                                out value);
+
+                        if (!parsed)
+                        {
+                            nonNumericCount++;
+                            continue;
+                        }
+
+                        try
+                        {
+                            checked
+                            {
+                                sum += value;
+                            }
+
+                            numericCount++;
+                        }
+                        catch (OverflowException)
+                        {
+                            return
+                                "SUM could not be calculated because the selected " +
+                                "numeric values exceed the supported decimal range.";
+                        }
+                    }
+                }
+            }
+
+            if (numericCount == 0)
+            {
+                return
+                    $"No numeric values were found.\n\n" +
+                    $"Selected: {selectedCount}\n" +
+                    $"NULL / Empty: {nullOrEmptyCount}\n" +
+                    $"Non-numeric: {nonNumericCount}";
+            }
+
+            return
+                $"SUM = {sum.ToString("G29", CultureInfo.CurrentCulture)}\n\n" +
+                $"Numeric cells: {numericCount}\n" +
+                $"Selected cells: {selectedCount}\n" +
+                $"NULL / Empty: {nullOrEmptyCount}\n" +
+                $"Non-numeric: {nonNumericCount}";
+        }
+
+
 
 
     }
