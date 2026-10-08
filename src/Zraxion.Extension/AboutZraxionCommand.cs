@@ -46,13 +46,10 @@ namespace Zraxion.Extension
         }
 
         /// <summary>
-        /// Gets the instance of the command.
+        /// Gets the initialized command instance.
+        /// The value is null until initialization completes successfully.
         /// </summary>
-        public static AboutZraxionCommand Instance
-        {
-            get;
-            private set;
-        }
+        public static AboutZraxionCommand? Instance { get; private set; }
 
         /// <summary>
         /// Gets the service provider from the owner package.
@@ -71,11 +68,12 @@ namespace Zraxion.Extension
         /// <param name="package">Owner package, not null.</param>
         public static async Task InitializeAsync(AsyncPackage package)
         {
-            // Switch to the main thread - the call to AddCommand in AboutZraxionCommand's constructor requires
-            // the UI thread.
-            await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync(package.DisposalToken);
+            var commandService =
+            await package.GetServiceAsync(typeof(IMenuCommandService))
+                as OleMenuCommandService
+            ?? throw new InvalidOperationException(
+                "Zraxion could not acquire the SSMS command service.");
 
-            OleMenuCommandService commandService = await package.GetServiceAsync(typeof(IMenuCommandService)) as OleMenuCommandService;
             Instance = new AboutZraxionCommand(package, commandService);
         }
 

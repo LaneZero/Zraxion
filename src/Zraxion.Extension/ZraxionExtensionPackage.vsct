@@ -59,6 +59,21 @@
           <ButtonText>About Zraxion</ButtonText>
         </Strings>
       </Button>
+
+	  <Button
+	 guid="guidZraxionExtensionPackageCmdSet"
+	 id="InspectResultsGridCommandId"
+	 priority="0x0110"
+	 type="Button">
+
+			<Parent
+			  guid="guidZraxionExtensionPackageCmdSet"
+			  id="MyMenuGroup" />
+
+			<Strings>
+				<ButtonText>Inspect Results Grid</ButtonText>
+			</Strings>
+		</Button>	
     </Buttons>
 
     <!--The bitmaps section is used to define the bitmaps that are used for the commands.-->
@@ -80,6 +95,8 @@
     <GuidSymbol name="guidZraxionExtensionPackageCmdSet" value="{af1b02be-ba8f-4292-9d65-c7399d43c1e5}">
       <IDSymbol name="MyMenuGroup" value="0x1020" />
       <IDSymbol name="AboutZraxionCommandId" value="0x0100" />
+	  <IDSymbol name="InspectResultsGridCommandId" value="0x0101" />
+		
     </GuidSymbol>
 
     <GuidSymbol name="guidImages" value="{9fdb714e-e81d-4022-ad9e-ffc7609e4b63}" >
