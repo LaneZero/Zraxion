@@ -54,6 +54,8 @@ namespace Zraxion.Extension
             await InspectResultsGridCommand.InitializeAsync(this);
         }
 
+       
+
         #endregion
     }
 }

@@ -12,6 +12,7 @@
 
   <ItemGroup>
     <None Remove="ZraxionExtensionPackage.vsct" />
+	  
   </ItemGroup>
   <ItemGroup>
     <ProjectCapability Include="CreateVsixContainer" />
@@ -24,6 +25,13 @@
     <Reference Include="Microsoft.CSharp" />
     <Reference Include="System.Design" />
     <Reference Include="System.Windows.Forms" />
+
+ <Reference Include="UIAutomationClient" />
+ <Reference Include="UIAutomationTypes" />
+	  <Reference Include="Microsoft.SqlServer.GridControl">
+		  <HintPath>C:\Program Files\Microsoft SQL Server Management Studio 22\Release\Common7\IDE\Microsoft.SqlServer.GridControl.dll</HintPath>
+		  <Private>false</Private>
+	  </Reference>
   </ItemGroup>
   <ItemGroup>
     <VSCTCompile Include="ZraxionExtensionPackage.vsct">

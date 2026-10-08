@@ -15,10 +15,10 @@
         defining some of the constants that we will use inside the file. -->
 
   <!--This is the file that defines the IDs for all the commands exposed by VisualStudio. -->
-  <Extern href="stdidcmd.h"/>
+  <Extern href="stdidcmd.h" />
 
   <!--This header contains the command ids for the menus provided by the shell. -->
-  <Extern href="vsshlids.h"/>
+  <Extern href="vsshlids.h" />
 
   <!--The Commands section is where commands, menus, and menu groups are defined.
       This section uses a Guid to identify the package that provides the command defined inside it. -->
@@ -37,7 +37,7 @@
          must be a menu. -->
     <Groups>
       <Group guid="guidZraxionExtensionPackageCmdSet" id="MyMenuGroup" priority="0x0600">
-        <Parent guid="guidSHLMainMenu" id="IDM_VS_MENU_TOOLS"/>
+        <Parent guid="guidSHLMainMenu" id="IDM_VS_MENU_TOOLS" />
       </Group>
     </Groups>
 
@@ -60,20 +60,21 @@
         </Strings>
       </Button>
 
-	  <Button
-	 guid="guidZraxionExtensionPackageCmdSet"
-	 id="InspectResultsGridCommandId"
-	 priority="0x0110"
-	 type="Button">
+	  <Button guid="guidZraxionExtensionPackageCmdSet" id="InspectResultsGridCommandId" priority="0x0110" type="Button">
 
-			<Parent
-			  guid="guidZraxionExtensionPackageCmdSet"
-			  id="MyMenuGroup" />
+			<Parent guid="guidZraxionExtensionPackageCmdSet" id="MyMenuGroup" />
 
 			<Strings>
 				<ButtonText>Inspect Results Grid</ButtonText>
 			</Strings>
 		</Button>	
+      <Button guid="guidZraxionExtensionPackageCmdSet" id="cmdidResultsGridProbe" priority="0x0100" type="Button">
+        <Parent guid="guidZraxionExtensionPackageCmdSet" id="MyMenuGroup" />
+        <Icon guid="guidImages1" id="bmpPic1" />
+        <Strings>
+          <ButtonText>Invoke ResultsGridProbe</ButtonText>
+        </Strings>
+      </Button>
     </Buttons>
 
     <!--The bitmaps section is used to define the bitmaps that are used for the commands.-->
@@ -83,7 +84,8 @@
             bitmap strip containing the bitmaps and then there are the numeric ids of the elements used
             inside a button definition. An important aspect of this declaration is that the element id
             must be the actual index (1-based) of the bitmap inside the bitmap strip. -->
-      <Bitmap guid="guidImages" href="Resources\AboutZraxionCommand.png" usedList="bmpPic1, bmpPic2, bmpPicSearch, bmpPicX, bmpPicArrows, bmpPicStrikethrough"/>
+      <Bitmap guid="guidImages" href="Resources\AboutZraxionCommand.png" usedList="bmpPic1, bmpPic2, bmpPicSearch, bmpPicX, bmpPicArrows, bmpPicStrikethrough" />
+      <Bitmap guid="guidImages1" href="Resources\ResultsGridProbe.png" usedList="bmpPic1, bmpPic2, bmpPicSearch, bmpPicX, bmpPicArrows, bmpPicStrikethrough" />
     </Bitmaps>
   </Commands>
 
@@ -97,9 +99,19 @@
       <IDSymbol name="AboutZraxionCommandId" value="0x0100" />
 	  <IDSymbol name="InspectResultsGridCommandId" value="0x0101" />
 		
+      <IDSymbol value="4129" name="cmdidResultsGridProbe" />
     </GuidSymbol>
 
-    <GuidSymbol name="guidImages" value="{9fdb714e-e81d-4022-ad9e-ffc7609e4b63}" >
+    <GuidSymbol name="guidImages" value="{9fdb714e-e81d-4022-ad9e-ffc7609e4b63}">
+      <IDSymbol name="bmpPic1" value="1" />
+      <IDSymbol name="bmpPic2" value="2" />
+      <IDSymbol name="bmpPicSearch" value="3" />
+      <IDSymbol name="bmpPicX" value="4" />
+      <IDSymbol name="bmpPicArrows" value="5" />
+      <IDSymbol name="bmpPicStrikethrough" value="6" />
+    </GuidSymbol>
+  
+    <GuidSymbol value="{4942666b-c79f-407b-8bf1-819a8e3729eb}" name="guidImages1">
       <IDSymbol name="bmpPic1" value="1" />
       <IDSymbol name="bmpPic2" value="2" />
       <IDSymbol name="bmpPicSearch" value="3" />

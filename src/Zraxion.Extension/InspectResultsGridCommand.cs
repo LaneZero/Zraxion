@@ -83,16 +83,12 @@ namespace Zraxion.Extension
         {
             ThreadHelper.ThrowIfNotOnUIThread();
 
-            const string title = "Zraxion - Results Grid Probe";
-            const string message =
-                "The Zraxion Results Grid probe is loaded successfully.\n\n" +
-                "Next step: detect the active SSMS Results Grid and inspect " +
-                "its selection without re-running the query.";
+            var message = ResultsGridProbe.InspectSelectedCellValues();
 
             VsShellUtilities.ShowMessageBox(
                 package,
                 message,
-                title,
+                "Zraxion - Results Grid Probe",
                 OLEMSGICON.OLEMSGICON_INFO,
                 OLEMSGBUTTON.OLEMSGBUTTON_OK,
                 OLEMSGDEFBUTTON.OLEMSGDEFBUTTON_FIRST);
