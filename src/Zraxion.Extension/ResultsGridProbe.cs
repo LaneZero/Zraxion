@@ -911,123 +911,222 @@ public static string InspectResultsPaneChildren()
             return "No focused SSMS Results Grid was detected.";
         }
 
-
         private static string CalculateSelectionSum(GridControl grid)
         {
-            var selectedBlocks = grid.SelectedCells;
-            var storage = grid.GridStorage;
+            GridSelectionAnalytics.NumericSelectionSummary summary;
 
-            if (storage is null)
+            try
             {
-                return "The active Results Grid does not expose grid storage.";
+                summary = GridSelectionAnalytics.Analyze(grid);
+            }
+            catch (OverflowException)
+            {
+                return
+                    "SUM could not be calculated because the selected " +
+                    "numeric values exceed the supported decimal range.";
+            }
+            catch (InvalidOperationException ex)
+            {
+                return ex.Message;
             }
 
-            if (selectedBlocks is null || selectedBlocks.Count == 0)
+            if (summary.SelectedCount == 0)
             {
                 return "No cells are currently selected.";
             }
 
-            decimal sum = 0m;
-
-            long selectedCount = 0;
-            long numericCount = 0;
-            long nullOrEmptyCount = 0;
-            long nonNumericCount = 0;
-
-            var styles =
-                NumberStyles.Number |
-                NumberStyles.AllowExponent |
-                NumberStyles.AllowCurrencySymbol;
-
-            foreach (BlockOfCells block in selectedBlocks)
-            {
-                for (long row = block.Y; row <= block.Bottom; row++)
-                {
-                    for (var uiColumn = block.X;
-                         uiColumn <= block.Right;
-                         uiColumn++)
-                    {
-                        selectedCount++;
-
-                        var storageColumn =
-                            grid.GetStorageColumnIndexByUIIndex(uiColumn);
-
-                        if (storageColumn < 0)
-                        {
-                            nonNumericCount++;
-                            continue;
-                        }
-
-                        var rawValue =
-                            storage.GetCellDataAsString(
-                                row,
-                                storageColumn);
-
-                        if (string.IsNullOrWhiteSpace(rawValue) ||
-                            string.Equals(
-                                rawValue.Trim(),
-                                "NULL",
-                                StringComparison.OrdinalIgnoreCase))
-                        {
-                            nullOrEmptyCount++;
-                            continue;
-                        }
-
-                        decimal value;
-
-                        var parsed =
-                            decimal.TryParse(
-                                rawValue,
-                                styles,
-                                CultureInfo.CurrentCulture,
-                                out value)
-                            ||
-                            decimal.TryParse(
-                                rawValue,
-                                styles,
-                                CultureInfo.InvariantCulture,
-                                out value);
-
-                        if (!parsed)
-                        {
-                            nonNumericCount++;
-                            continue;
-                        }
-
-                        try
-                        {
-                            checked
-                            {
-                                sum += value;
-                            }
-
-                            numericCount++;
-                        }
-                        catch (OverflowException)
-                        {
-                            return
-                                "SUM could not be calculated because the selected " +
-                                "numeric values exceed the supported decimal range.";
-                        }
-                    }
-                }
-            }
-
-            if (numericCount == 0)
+            if (summary.NumericCount == 0)
             {
                 return
                     $"No numeric values were found.\n\n" +
-                    $"Selected: {selectedCount}\n" +
-                    $"NULL / Empty: {nullOrEmptyCount}\n" +
-                    $"Non-numeric: {nonNumericCount}";
+                    $"Selected: {summary.SelectedCount}\n" +
+                    $"NULL / Empty: {summary.NullOrEmptyCount}\n" +
+                    $"Non-numeric: {summary.NonNumericCount}";
             }
 
             return
-                $"SUM = {sum.ToString("G29", CultureInfo.CurrentCulture)}\n\n" +
-                $"Numeric cells: {numericCount}\n" +
-                $"Selected cells: {selectedCount}\n" +
-                $"NULL / Empty: {nullOrEmptyCount}\n" +
-                $"Non-numeric: {nonNumericCount}";
+                $"SUM = {summary.Sum.ToString("G29", CultureInfo.CurrentCulture)}\n\n" +
+                $"Numeric cells: {summary.NumericCount}\n" +
+                $"Selected cells: {summary.SelectedCount}\n" +
+                $"NULL / Empty: {summary.NullOrEmptyCount}\n" +
+                $"Non-numeric: {summary.NonNumericCount}";
+        }
+
+
+
+
+        public static string AverageSelectedCells()
+        {
+            return FormatNumericStatistic(
+                "AVERAGE",
+                summary => summary.Average);
+        }
+
+        public static string MinSelectedCells()
+        {
+            return FormatNumericStatistic(
+                "MIN",
+                summary => summary.Min);
+        }
+
+        public static string MaxSelectedCells()
+        {
+            return FormatNumericStatistic(
+                "MAX",
+                summary => summary.Max);
+        }
+
+        public static string CountSelectedCells()
+        {
+            return FormatNumericCount();
+        }
+
+        private static string FormatNumericStatistic(
+            string label,
+            Func<GridSelectionAnalytics.NumericSelectionSummary, decimal?> selector)
+        {
+            var grid = GetFocusedResultsGrid();
+
+            if (grid is null)
+            {
+                return "No focused SSMS Results Grid was detected.";
+            }
+
+            GridSelectionAnalytics.NumericSelectionSummary summary;
+
+            try
+            {
+                summary = GridSelectionAnalytics.Analyze(grid);
+            }
+            catch (OverflowException)
+            {
+                return
+                    $"{label} could not be calculated because the selected " +
+                    "numeric values exceed the supported decimal range.";
+            }
+            catch (InvalidOperationException ex)
+            {
+                return ex.Message;
+            }
+
+            if (summary.SelectedCount == 0)
+            {
+                return "No cells are currently selected.";
+            }
+
+            if (summary.NumericCount == 0)
+            {
+                return
+                    $"No numeric values were found.\n\n" +
+                    $"Selected: {summary.SelectedCount}\n" +
+                    $"NULL / Empty: {summary.NullOrEmptyCount}\n" +
+                    $"Non-numeric: {summary.NonNumericCount}";
+            }
+
+            var value = selector(summary);
+
+            return
+                $"{label} = {value?.ToString("G29", CultureInfo.CurrentCulture)}\n\n" +
+                $"Numeric cells: {summary.NumericCount}\n" +
+                $"Selected cells: {summary.SelectedCount}\n" +
+                $"NULL / Empty: {summary.NullOrEmptyCount}\n" +
+                $"Non-numeric: {summary.NonNumericCount}";
+        }
+
+        private static string FormatNumericCount()
+        {
+            var grid = GetFocusedResultsGrid();
+
+            if (grid is null)
+            {
+                return "No focused SSMS Results Grid was detected.";
+            }
+
+            GridSelectionAnalytics.NumericSelectionSummary summary;
+
+            try
+            {
+                summary = GridSelectionAnalytics.Analyze(grid);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return ex.Message;
+            }
+
+            if (summary.SelectedCount == 0)
+            {
+                return "No cells are currently selected.";
+            }
+
+            return
+                $"COUNT = {summary.NumericCount}\n\n" +
+                $"Selected cells: {summary.SelectedCount}\n" +
+                $"NULL / Empty: {summary.NullOrEmptyCount}\n" +
+                $"Non-numeric: {summary.NonNumericCount}";
+        }
+
+
+        private static GridControl? GetFocusedResultsGrid()
+        {
+            var process = Process.GetCurrentProcess();
+
+            if (process.MainWindowHandle == IntPtr.Zero)
+            {
+                return null;
+            }
+
+            AutomationElement root;
+
+            try
+            {
+                root = AutomationElement.FromHandle(process.MainWindowHandle);
+            }
+            catch
+            {
+                return null;
+            }
+
+            var resultsPanes = root.FindAll(
+                TreeScope.Descendants,
+                new AndCondition(
+                    new PropertyCondition(
+                        AutomationElement.NameProperty,
+                        "Results"),
+                    new PropertyCondition(
+                        AutomationElement.ControlTypeProperty,
+                        ControlType.Pane)));
+
+            foreach (AutomationElement element in resultsPanes)
+            {
+                try
+                {
+                    if (!element.Current.HasKeyboardFocus)
+                    {
+                        continue;
+                    }
+
+                    var handle = new IntPtr(
+                        element.Current.NativeWindowHandle);
+
+                    if (handle == IntPtr.Zero)
+                    {
+                        continue;
+                    }
+
+                    var control = Control.FromHandle(handle);
+
+                    if (control is GridControl grid)
+                    {
+                        return grid;
+                    }
+                }
+                catch (ElementNotAvailableException)
+                {
+                    // SSMS may rebuild the Results pane while it is inspected.
+                }
+            }
+
+            return null;
         }
 
 
