@@ -133,5 +133,27 @@ namespace Zraxion.Extension
 
             return result;
         }
+
+
+        public static GridAnalyticsSnapshot CreateSnapshot(
+    GridControl grid,
+    string label)
+        {
+            var summary = Analyze(grid);
+
+            return new GridAnalyticsSnapshot
+            {
+                Label = label ?? string.Empty,
+                Sum = summary.Sum,
+                Average = summary.Average,
+                Min = summary.Min,
+                Max = summary.Max,
+                NumericCount = summary.NumericCount,
+                SelectedCount = summary.SelectedCount,
+                NullOrEmptyCount = summary.NullOrEmptyCount,
+                NonNumericCount = summary.NonNumericCount,
+                CapturedAtUtc = DateTime.UtcNow
+            };
+        }
     }
 }

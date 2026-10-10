@@ -1132,5 +1132,132 @@ public static string InspectResultsPaneChildren()
 
 
 
+        public static string SetCurrentSelectionAsComparisonBaseline()
+        {
+            var grid = GetFocusedResultsGrid();
+
+            if (grid is null)
+            {
+                return "No focused SSMS Results Grid was detected.";
+            }
+
+            GridAnalyticsSnapshot snapshot;
+
+            try
+            {
+                snapshot = GridSelectionAnalytics.CreateSnapshot(
+                    grid,
+                    "A");
+            }
+            catch (OverflowException)
+            {
+                return
+                    "The comparison baseline could not be created because " +
+                    "the selected numeric values exceed the supported decimal range.";
+            }
+            catch (InvalidOperationException ex)
+            {
+                return ex.Message;
+            }
+
+            if (snapshot.SelectedCount == 0)
+            {
+                return "No cells are currently selected.";
+            }
+
+            if (snapshot.NumericCount == 0)
+            {
+                return
+                    "The selected cells do not contain numeric values.";
+            }
+
+            GridComparisonSession.SetLeft(snapshot);
+
+            return
+                $"Comparison baseline A saved.\n\n" +
+                $"SUM = {snapshot.Sum.ToString("G29", CultureInfo.CurrentCulture)}\n" +
+                $"Numeric cells: {snapshot.NumericCount}\n" +
+                $"Selected cells: {snapshot.SelectedCount}";
+        }
+
+        public static string CompareCurrentSelectionWithBaseline()
+        {
+            var baseline = GridComparisonSession.LeftSnapshot;
+
+            if (baseline is null)
+            {
+                return
+                    "No comparison baseline has been saved.\n\n" +
+                    "Select numeric cells and use 'Set Selection as A' first.";
+            }
+
+            var grid = GetFocusedResultsGrid();
+
+            if (grid is null)
+            {
+                return "No focused SSMS Results Grid was detected.";
+            }
+
+            GridAnalyticsSnapshot current;
+
+            try
+            {
+                current = GridSelectionAnalytics.CreateSnapshot(
+                    grid,
+                    "B");
+            }
+            catch (OverflowException)
+            {
+                return
+                    "The comparison could not be completed because " +
+                    "the selected numeric values exceed the supported decimal range.";
+            }
+            catch (InvalidOperationException ex)
+            {
+                return ex.Message;
+            }
+
+            if (current.SelectedCount == 0)
+            {
+                return "No cells are currently selected.";
+            }
+
+            if (current.NumericCount == 0)
+            {
+                return
+                    "The current selection does not contain numeric values.";
+            }
+
+            var comparison =
+                new GridAnalyticsComparison(
+                    baseline,
+                    current);
+
+            var differencePercent =
+                comparison.DifferencePercent.HasValue
+                    ? comparison.DifferencePercent.Value.ToString(
+                        "0.####",
+                        CultureInfo.CurrentCulture) + "%"
+                    : "N/A";
+
+            var status =
+                comparison.IsMatch
+                    ? "MATCH"
+                    : "MISMATCH";
+
+            return
+                $"A SUM = {baseline.Sum.ToString("G29", CultureInfo.CurrentCulture)}\n" +
+                $"B SUM = {current.Sum.ToString("G29", CultureInfo.CurrentCulture)}\n\n" +
+                $"Difference (B - A) = " +
+                $"{comparison.Difference.ToString("G29", CultureInfo.CurrentCulture)}\n" +
+                $"Absolute Difference = " +
+                $"{comparison.AbsoluteDifference.ToString("G29", CultureInfo.CurrentCulture)}\n" +
+                $"Difference % = {differencePercent}\n\n" +
+                $"Status = {status}";
+        }
+
+
+
+
     }
 }

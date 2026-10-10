@@ -78,40 +78,28 @@
 			</Strings>
 		</Button>	
 
-     	<Button guid="guidZraxionExtensionPackageCmdSet"
-        id="AverageSelectedCellsCommandId"
-        priority="0x0130"
-        type="Button">
+     	<Button guid="guidZraxionExtensionPackageCmdSet" id="AverageSelectedCellsCommandId" priority="0x0130" type="Button">
 			<Parent guid="guidZraxionExtensionPackageCmdSet" id="MyMenuGroup" />
 			<Strings>
 				<ButtonText>Average Selected Cells</ButtonText>
 			</Strings>
 		</Button>
 
-		<Button guid="guidZraxionExtensionPackageCmdSet"
-				id="MinSelectedCellsCommandId"
-				priority="0x0140"
-				type="Button">
+		<Button guid="guidZraxionExtensionPackageCmdSet" id="MinSelectedCellsCommandId" priority="0x0140" type="Button">
 			<Parent guid="guidZraxionExtensionPackageCmdSet" id="MyMenuGroup" />
 			<Strings>
 				<ButtonText>Minimum Selected Cells</ButtonText>
 			</Strings>
 		</Button>
 
-		<Button guid="guidZraxionExtensionPackageCmdSet"
-				id="MaxSelectedCellsCommandId"
-				priority="0x0150"
-				type="Button">
+		<Button guid="guidZraxionExtensionPackageCmdSet" id="MaxSelectedCellsCommandId" priority="0x0150" type="Button">
 			<Parent guid="guidZraxionExtensionPackageCmdSet" id="MyMenuGroup" />
 			<Strings>
 				<ButtonText>Maximum Selected Cells</ButtonText>
 			</Strings>
 		</Button>
 
-		<Button guid="guidZraxionExtensionPackageCmdSet"
-				id="CountSelectedCellsCommandId"
-				priority="0x0160"
-				type="Button">
+		<Button guid="guidZraxionExtensionPackageCmdSet" id="CountSelectedCellsCommandId" priority="0x0160" type="Button">
 			<Parent guid="guidZraxionExtensionPackageCmdSet" id="MyMenuGroup" />
 			<Strings>
 				<ButtonText>Count Selected Cells</ButtonText>
@@ -120,7 +108,28 @@
 
 
 
-	</Buttons>
+
+		<Button guid="guidZraxionExtensionPackageCmdSet" id="SetComparisonBaselineCommandId" priority="0x0170" type="Button">
+			<Parent guid="guidZraxionExtensionPackageCmdSet" id="MyMenuGroup" />
+			<Strings>
+				<ButtonText>Set Selection as A</ButtonText>
+			</Strings>
+		</Button>	
+
+		<Button guid="guidZraxionExtensionPackageCmdSet"
+        id="CompareSelectionWithBaselineCommandId"
+        priority="0x0180"
+        type="Button">
+			<Parent guid="guidZraxionExtensionPackageCmdSet"
+					id="MyMenuGroup" />
+			<Strings>
+				<ButtonText>Compare Selection with A</ButtonText>
+			</Strings>
+		</Button>
+		
+		
+		
+    </Buttons>
 
     <!--The bitmaps section is used to define the bitmaps that are used for the commands.-->
     <Bitmaps>
@@ -134,6 +143,11 @@
       <Bitmap guid="guidImages4" href="Resources\MinSelectedCellsCommand.png" usedList="bmpPic1, bmpPic2, bmpPicSearch, bmpPicX, bmpPicArrows, bmpPicStrikethrough" />
       <Bitmap guid="guidImages5" href="Resources\MaxSelectedCellsCommand.png" usedList="bmpPic1, bmpPic2, bmpPicSearch, bmpPicX, bmpPicArrows, bmpPicStrikethrough" />
       <Bitmap guid="guidImages6" href="Resources\CountSelectedCellsCommand.png" usedList="bmpPic1, bmpPic2, bmpPicSearch, bmpPicX, bmpPicArrows, bmpPicStrikethrough" />
+      <Bitmap guid="guidImages7" href="Resources\GridAnalyticsSnapshot.png" usedList="bmpPic1, bmpPic2, bmpPicSearch, bmpPicX, bmpPicArrows, bmpPicStrikethrough" />
+      <Bitmap guid="guidImages8" href="Resources\GridAnalyticsComparison.png" usedList="bmpPic1, bmpPic2, bmpPicSearch, bmpPicX, bmpPicArrows, bmpPicStrikethrough" />
+      <Bitmap guid="guidImages9" href="Resources\GridComparisonSession.png" usedList="bmpPic1, bmpPic2, bmpPicSearch, bmpPicX, bmpPicArrows, bmpPicStrikethrough" />
+      <Bitmap guid="guidImages10" href="Resources\SetComparisonBaselineCommand.png" usedList="bmpPic1, bmpPic2, bmpPicSearch, bmpPicX, bmpPicArrows, bmpPicStrikethrough" />
+      <Bitmap guid="guidImages11" href="Resources\CompareSelectionWithBaselineCommand.png" usedList="bmpPic1, bmpPic2, bmpPicSearch, bmpPicX, bmpPicArrows, bmpPicStrikethrough" />
     </Bitmaps>
   </Commands>
 
@@ -150,9 +164,12 @@
 		<IDSymbol name="MinSelectedCellsCommandId" value="0x0104" />
 		<IDSymbol name="MaxSelectedCellsCommandId" value="0x0105" />
 		<IDSymbol name="CountSelectedCellsCommandId" value="0x0106" />
+		<IDSymbol name="SetComparisonBaselineCommandId" value="0x0107" />
+		<IDSymbol name="CompareSelectionWithBaselineCommandId" value="0x0108" />
 
 
-	</GuidSymbol>
+	
+    </GuidSymbol>
 
 	  <GuidSymbol name="guidZraxionExtensionPackageCmdSet" value="{af1b02be-ba8f-4292-9d65-c7399d43c1e5}">
 
@@ -220,6 +237,51 @@
     </GuidSymbol>
   
     <GuidSymbol value="{0aa73f63-9367-4139-8f47-26f9bc82bef3}" name="guidImages6">
+      <IDSymbol name="bmpPic1" value="1" />
+      <IDSymbol name="bmpPic2" value="2" />
+      <IDSymbol name="bmpPicSearch" value="3" />
+      <IDSymbol name="bmpPicX" value="4" />
+      <IDSymbol name="bmpPicArrows" value="5" />
+      <IDSymbol name="bmpPicStrikethrough" value="6" />
+    </GuidSymbol>
+  
+    <GuidSymbol value="{8fd92ceb-aa8d-4ce8-ae28-ba72465c758d}" name="guidImages7">
+      <IDSymbol name="bmpPic1" value="1" />
+      <IDSymbol name="bmpPic2" value="2" />
+      <IDSymbol name="bmpPicSearch" value="3" />
+      <IDSymbol name="bmpPicX" value="4" />
+      <IDSymbol name="bmpPicArrows" value="5" />
+      <IDSymbol name="bmpPicStrikethrough" value="6" />
+    </GuidSymbol>
+  
+    <GuidSymbol value="{2d90804b-dd6f-405b-ace9-7df9f19d0816}" name="guidImages8">
+      <IDSymbol name="bmpPic1" value="1" />
+      <IDSymbol name="bmpPic2" value="2" />
+      <IDSymbol name="bmpPicSearch" value="3" />
+      <IDSymbol name="bmpPicX" value="4" />
+      <IDSymbol name="bmpPicArrows" value="5" />
+      <IDSymbol name="bmpPicStrikethrough" value="6" />
+    </GuidSymbol>
+  
+    <GuidSymbol value="{e1158d0f-2e65-46f6-a78a-ea26f667320e}" name="guidImages9">
+      <IDSymbol name="bmpPic1" value="1" />
+      <IDSymbol name="bmpPic2" value="2" />
+      <IDSymbol name="bmpPicSearch" value="3" />
+      <IDSymbol name="bmpPicX" value="4" />
+      <IDSymbol name="bmpPicArrows" value="5" />
+      <IDSymbol name="bmpPicStrikethrough" value="6" />
+    </GuidSymbol>
+  
+    <GuidSymbol value="{cc33c0df-01bc-4f9d-9c0d-61d520378f6b}" name="guidImages10">
+      <IDSymbol name="bmpPic1" value="1" />
+      <IDSymbol name="bmpPic2" value="2" />
+      <IDSymbol name="bmpPicSearch" value="3" />
+      <IDSymbol name="bmpPicX" value="4" />
+      <IDSymbol name="bmpPicArrows" value="5" />
+      <IDSymbol name="bmpPicStrikethrough" value="6" />
+    </GuidSymbol>
+  
+    <GuidSymbol value="{446d47b8-5e6e-46fa-b24c-a000bb6a14ce}" name="guidImages11">
       <IDSymbol name="bmpPic1" value="1" />
       <IDSymbol name="bmpPic2" value="2" />
       <IDSymbol name="bmpPicSearch" value="3" />
