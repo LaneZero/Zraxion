@@ -83,7 +83,8 @@ namespace Zraxion.Extension
         {
             ThreadHelper.ThrowIfNotOnUIThread();
 
-            var message = ResultsGridProbe.InspectSelectedCellValues();
+            //var message = ResultsGridProbe.InspectSelectedCellValues();
+            var message = ResultsGridProbe.InspectResultsGridParentChain();
 
             VsShellUtilities.ShowMessageBox(
                 package,

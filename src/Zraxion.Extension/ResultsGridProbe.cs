@@ -1255,7 +1255,37 @@ public static string InspectResultsPaneChildren()
                 $"Difference % = {differencePercent}\n\n" +
                 $"Status = {status}";
         }
+        public static string InspectResultsGridParentChain()
+        {
+            var grid = GetFocusedResultsGrid();
 
+            if (grid is null)
+            {
+                return "No focused SSMS Results Grid was detected.";
+            }
+
+            var builder = new StringBuilder();
+
+            Control? current = grid;
+            var level = 0;
+
+            while (current is not null && level < 12)
+            {
+                builder.AppendLine($"Level {level}");
+                builder.AppendLine($"Type: {current.GetType().FullName}");
+                builder.AppendLine($"Name: {current.Name}");
+                builder.AppendLine($"Dock: {current.Dock}");
+                builder.AppendLine($"Bounds: {current.Bounds}");
+                builder.AppendLine($"ClientSize: {current.ClientSize}");
+                builder.AppendLine($"Children: {current.Controls.Count}");
+                builder.AppendLine();
+
+                current = current.Parent;
+                level++;
+            }
+
+            return builder.ToString();
+        }
 
 
 
