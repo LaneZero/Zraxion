@@ -1,293 +1,345 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<CommandTable xmlns="http://schemas.microsoft.com/VisualStudio/2005-10-18/CommandTable" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+<CommandTable xmlns="http://schemas.microsoft.com/VisualStudio/2005-10-18/CommandTable"
+              xmlns:xs="http://www.w3.org/2001/XMLSchema">
 
-  <!--  This is the file that defines the actual layout and type of the commands.
-        It is divided in different sections (e.g. command definition, command
-        placement, ...), with each defining a specific set of properties.
-        See the comment before each section for more details about how to
-        use it. -->
+	<Extern href="stdidcmd.h" />
+	<Extern href="vsshlids.h" />
 
-  <!--  The VSCT compiler (the tool that translates this file into the binary
-        format that VisualStudio will consume) has the ability to run a preprocessor
-        on the vsct file; this preprocessor is (usually) the C++ preprocessor, so
-        it is possible to define includes and macros with the same syntax used
-        in C++ files. Using this ability of the compiler here, we include some files
-        defining some of the constants that we will use inside the file. -->
+	<Commands package="guidZraxionExtensionPackage">
 
-  <!--This is the file that defines the IDs for all the commands exposed by VisualStudio. -->
-  <Extern href="stdidcmd.h" />
+		<Menus>
+			<Menu guid="guidZraxionExtensionPackageCmdSet"
+				  id="ZraxionToolsMenu"
+				  priority="0x0100"
+				  type="Menu">
+				<Parent guid="guidZraxionExtensionPackageCmdSet"
+						id="ZraxionToolsPlacementGroup" />
+				<Strings>
+					<ButtonText>Zraxion</ButtonText>
+					<CommandName>Zraxion</CommandName>
+				</Strings>
+			</Menu>
 
-  <!--This header contains the command ids for the menus provided by the shell. -->
-  <Extern href="vsshlids.h" />
+			<Menu guid="guidZraxionExtensionPackageCmdSet"
+				  id="ZraxionAnalyticsMenu"
+				  priority="0x0100"
+				  type="Menu">
+				<Parent guid="guidZraxionExtensionPackageCmdSet"
+						id="ZraxionRootGroup" />
+				<Strings>
+					<ButtonText>Analytics</ButtonText>
+					<CommandName>Analytics</CommandName>
+				</Strings>
+			</Menu>
 
-  <!--The Commands section is where commands, menus, and menu groups are defined.
-      This section uses a Guid to identify the package that provides the command defined inside it. -->
-  <Commands package="guidZraxionExtensionPackage">
-    <!-- Inside this section we have different sub-sections: one for the menus, another
-    for the menu groups, one for the buttons (the actual commands), one for the combos
-    and the last one for the bitmaps used. Each element is identified by a command id that
-    is a unique pair of guid and numeric identifier; the guid part of the identifier is usually
-    called "command set" and is used to group different command inside a logically related
-    group; your package should define its own command set in order to avoid collisions
-    with command ids defined by other packages. -->
+			<Menu guid="guidZraxionExtensionPackageCmdSet"
+				  id="ZraxionCompareMenu"
+				  priority="0x0200"
+				  type="Menu">
+				<Parent guid="guidZraxionExtensionPackageCmdSet"
+						id="ZraxionRootGroup" />
+				<Strings>
+					<ButtonText>Compare</ButtonText>
+					<CommandName>Compare</CommandName>
+				</Strings>
+			</Menu>
+		</Menus>
 
-    <!-- In this section you can define new menu groups. A menu group is a container for
-         other menus or buttons (commands); from a visual point of view you can see the
-         group as the part of a menu contained between two lines. The parent of a group
-         must be a menu. -->
-    <Groups>
-      <Group guid="guidZraxionExtensionPackageCmdSet" id="MyMenuGroup" priority="0x0600">
-        <Parent guid="guidSHLMainMenu" id="IDM_VS_MENU_TOOLS" />
-      </Group>
-    </Groups>
+		<Groups>
+			<!-- A group must be placed on the built-in Tools menu first. -->
+			<Group guid="guidZraxionExtensionPackageCmdSet"
+				   id="ZraxionToolsPlacementGroup"
+				   priority="0x0600">
+				<Parent guid="guidSHLMainMenu"
+						id="IDM_VS_MENU_TOOLS" />
+			</Group>
 
-    <!--Buttons section. -->
-    <!--This section defines the elements the user can interact with, like a menu command or a button
-        or combo box in a toolbar. -->
-    <Buttons>
-      <!--To define a menu group you have to specify its ID, the parent menu and its display priority.
-          The command is visible and enabled by default. If you need to change the visibility, status, etc, you can use
-          the CommandFlag node.
-          You can add more than one CommandFlag node e.g.:
-              <CommandFlag>DefaultInvisible</CommandFlag>
-              <CommandFlag>DynamicVisibility</CommandFlag>
-          If you do not want an image next to your command, remove the Icon node /> -->
-      <Button guid="guidZraxionExtensionPackageCmdSet" id="AboutZraxionCommandId" priority="0x0100" type="Button">
-        <Parent guid="guidZraxionExtensionPackageCmdSet" id="MyMenuGroup" />
-        <Icon guid="guidImages" id="bmpPic1" />
-        <Strings>
-          <ButtonText>About Zraxion</ButtonText>
-        </Strings>
-      </Button>
+			<Group guid="guidZraxionExtensionPackageCmdSet"
+				   id="ZraxionRootGroup"
+				   priority="0x0100">
+				<Parent guid="guidZraxionExtensionPackageCmdSet"
+						id="ZraxionToolsMenu" />
+			</Group>
 
-	  <Button guid="guidZraxionExtensionPackageCmdSet" id="InspectResultsGridCommandId" priority="0x0110" type="Button">
+			<Group guid="guidZraxionExtensionPackageCmdSet"
+				   id="ZraxionAnalyticsGroup"
+				   priority="0x0100">
+				<Parent guid="guidZraxionExtensionPackageCmdSet"
+						id="ZraxionAnalyticsMenu" />
+			</Group>
 
-			<Parent guid="guidZraxionExtensionPackageCmdSet" id="MyMenuGroup" />
+			<Group guid="guidZraxionExtensionPackageCmdSet"
+				   id="ZraxionCompareGroup"
+				   priority="0x0100">
+				<Parent guid="guidZraxionExtensionPackageCmdSet"
+						id="ZraxionCompareMenu" />
+			</Group>
 
-			<Strings>
-				<ButtonText>Inspect Results Grid</ButtonText>
-			</Strings>
-		</Button>
+			<Group guid="guidZraxionExtensionPackageCmdSet"
+				   id="ZraxionAboutGroup"
+				   priority="0x0300">
+				<Parent guid="guidZraxionExtensionPackageCmdSet"
+						id="ZraxionToolsMenu" />
+			</Group>
+		</Groups>
 
-		<Button guid="guidZraxionExtensionPackageCmdSet" id="SumSelectedCellsCommandId" priority="0x0120" type="Button">
+		<Buttons>
+			<Button guid="guidZraxionExtensionPackageCmdSet"
+					id="InspectResultsGridCommandId"
+					priority="0x0100"
+					type="Button">
+				<Parent guid="guidZraxionExtensionPackageCmdSet"
+						id="ZraxionAnalyticsGroup" />
+				<Strings>
+					<ButtonText>Show Analytics Bar</ButtonText>
+				</Strings>
+			</Button>
 
-			<Parent guid="guidZraxionExtensionPackageCmdSet" id="MyMenuGroup" />
+			<Button guid="guidZraxionExtensionPackageCmdSet"
+					id="SumSelectedCellsCommandId"
+					priority="0x0200"
+					type="Button">
+				<Parent guid="guidZraxionExtensionPackageCmdSet"
+						id="ZraxionAnalyticsGroup" />
+				<Strings>
+					<ButtonText>Sum Selected Cells</ButtonText>
+				</Strings>
+			</Button>
 
-			<Strings>
-				<ButtonText>Sum Selected Cells</ButtonText>
-			</Strings>
-		</Button>	
+			<Button guid="guidZraxionExtensionPackageCmdSet"
+					id="AverageSelectedCellsCommandId"
+					priority="0x0210"
+					type="Button">
+				<Parent guid="guidZraxionExtensionPackageCmdSet"
+						id="ZraxionAnalyticsGroup" />
+				<Strings>
+					<ButtonText>Average Selected Cells</ButtonText>
+				</Strings>
+			</Button>
 
-     	<Button guid="guidZraxionExtensionPackageCmdSet" id="AverageSelectedCellsCommandId" priority="0x0130" type="Button">
-			<Parent guid="guidZraxionExtensionPackageCmdSet" id="MyMenuGroup" />
-			<Strings>
-				<ButtonText>Average Selected Cells</ButtonText>
-			</Strings>
-		</Button>
+			<Button guid="guidZraxionExtensionPackageCmdSet"
+					id="CountSelectedCellsCommandId"
+					priority="0x0220"
+					type="Button">
+				<Parent guid="guidZraxionExtensionPackageCmdSet"
+						id="ZraxionAnalyticsGroup" />
+				<Strings>
+					<ButtonText>Count Selected Cells</ButtonText>
+				</Strings>
+			</Button>
 
-		<Button guid="guidZraxionExtensionPackageCmdSet" id="MinSelectedCellsCommandId" priority="0x0140" type="Button">
-			<Parent guid="guidZraxionExtensionPackageCmdSet" id="MyMenuGroup" />
-			<Strings>
-				<ButtonText>Minimum Selected Cells</ButtonText>
-			</Strings>
-		</Button>
+			<Button guid="guidZraxionExtensionPackageCmdSet"
+					id="MinSelectedCellsCommandId"
+					priority="0x0230"
+					type="Button">
+				<Parent guid="guidZraxionExtensionPackageCmdSet"
+						id="ZraxionAnalyticsGroup" />
+				<Strings>
+					<ButtonText>Minimum Selected Cells</ButtonText>
+				</Strings>
+			</Button>
 
-		<Button guid="guidZraxionExtensionPackageCmdSet" id="MaxSelectedCellsCommandId" priority="0x0150" type="Button">
-			<Parent guid="guidZraxionExtensionPackageCmdSet" id="MyMenuGroup" />
-			<Strings>
-				<ButtonText>Maximum Selected Cells</ButtonText>
-			</Strings>
-		</Button>
+			<Button guid="guidZraxionExtensionPackageCmdSet"
+					id="MaxSelectedCellsCommandId"
+					priority="0x0240"
+					type="Button">
+				<Parent guid="guidZraxionExtensionPackageCmdSet"
+						id="ZraxionAnalyticsGroup" />
+				<Strings>
+					<ButtonText>Maximum Selected Cells</ButtonText>
+				</Strings>
+			</Button>
 
-		<Button guid="guidZraxionExtensionPackageCmdSet" id="CountSelectedCellsCommandId" priority="0x0160" type="Button">
-			<Parent guid="guidZraxionExtensionPackageCmdSet" id="MyMenuGroup" />
-			<Strings>
-				<ButtonText>Count Selected Cells</ButtonText>
-			</Strings>
-		</Button>
+			<Button guid="guidZraxionExtensionPackageCmdSet"
+					id="SetComparisonBaselineCommandId"
+					priority="0x0100"
+					type="Button">
+				<Parent guid="guidZraxionExtensionPackageCmdSet"
+						id="ZraxionCompareGroup" />
+				<Strings>
+					<ButtonText>Set Selection as A</ButtonText>
+				</Strings>
+			</Button>
 
+			<Button guid="guidZraxionExtensionPackageCmdSet"
+					id="CompareSelectionWithBaselineCommandId"
+					priority="0x0200"
+					type="Button">
+				<Parent guid="guidZraxionExtensionPackageCmdSet"
+						id="ZraxionCompareGroup" />
+				<Strings>
+					<ButtonText>Compare Selection with A</ButtonText>
+				</Strings>
+			</Button>
 
+			<Button guid="guidZraxionExtensionPackageCmdSet"
+					id="AboutZraxionCommandId"
+					priority="0x0100"
+					type="Button">
+				<Parent guid="guidZraxionExtensionPackageCmdSet"
+						id="ZraxionAboutGroup" />
+				<Icon guid="guidImages" id="bmpPic1" />
+				<Strings>
+					<ButtonText>About Zraxion</ButtonText>
+				</Strings>
+			</Button>
+		</Buttons>
 
-
-		<Button guid="guidZraxionExtensionPackageCmdSet" id="SetComparisonBaselineCommandId" priority="0x0170" type="Button">
-			<Parent guid="guidZraxionExtensionPackageCmdSet" id="MyMenuGroup" />
-			<Strings>
-				<ButtonText>Set Selection as A</ButtonText>
-			</Strings>
-		</Button>	
-
-		<Button guid="guidZraxionExtensionPackageCmdSet"
-        id="CompareSelectionWithBaselineCommandId"
-        priority="0x0180"
-        type="Button">
-			<Parent guid="guidZraxionExtensionPackageCmdSet"
-					id="MyMenuGroup" />
-			<Strings>
-				<ButtonText>Compare Selection with A</ButtonText>
-			</Strings>
-		</Button>
-		
-		
-		
-    </Buttons>
-
-    <!--The bitmaps section is used to define the bitmaps that are used for the commands.-->
-    <Bitmaps>
-      <!--  The bitmap id is defined in a way that is a little bit different from the others:
+		<Bitmaps>
+			<!--  The bitmap id is defined in a way that is a little bit different from the others:
             the declaration starts with a guid for the bitmap strip, then there is the resource id of the
             bitmap strip containing the bitmaps and then there are the numeric ids of the elements used
             inside a button definition. An important aspect of this declaration is that the element id
             must be the actual index (1-based) of the bitmap inside the bitmap strip. -->
-      <Bitmap guid="guidImages" href="Resources\AboutZraxionCommand.png" usedList="bmpPic1, bmpPic2, bmpPicSearch, bmpPicX, bmpPicArrows, bmpPicStrikethrough" />
-      <Bitmap guid="guidImages3" href="Resources\AverageSelectedCellsCommand.png" usedList="bmpPic1, bmpPic2, bmpPicSearch, bmpPicX, bmpPicArrows, bmpPicStrikethrough" />
-      <Bitmap guid="guidImages4" href="Resources\MinSelectedCellsCommand.png" usedList="bmpPic1, bmpPic2, bmpPicSearch, bmpPicX, bmpPicArrows, bmpPicStrikethrough" />
-      <Bitmap guid="guidImages5" href="Resources\MaxSelectedCellsCommand.png" usedList="bmpPic1, bmpPic2, bmpPicSearch, bmpPicX, bmpPicArrows, bmpPicStrikethrough" />
-      <Bitmap guid="guidImages6" href="Resources\CountSelectedCellsCommand.png" usedList="bmpPic1, bmpPic2, bmpPicSearch, bmpPicX, bmpPicArrows, bmpPicStrikethrough" />
-      <Bitmap guid="guidImages7" href="Resources\GridAnalyticsSnapshot.png" usedList="bmpPic1, bmpPic2, bmpPicSearch, bmpPicX, bmpPicArrows, bmpPicStrikethrough" />
-      <Bitmap guid="guidImages8" href="Resources\GridAnalyticsComparison.png" usedList="bmpPic1, bmpPic2, bmpPicSearch, bmpPicX, bmpPicArrows, bmpPicStrikethrough" />
-      <Bitmap guid="guidImages9" href="Resources\GridComparisonSession.png" usedList="bmpPic1, bmpPic2, bmpPicSearch, bmpPicX, bmpPicArrows, bmpPicStrikethrough" />
-      <Bitmap guid="guidImages10" href="Resources\SetComparisonBaselineCommand.png" usedList="bmpPic1, bmpPic2, bmpPicSearch, bmpPicX, bmpPicArrows, bmpPicStrikethrough" />
-      <Bitmap guid="guidImages11" href="Resources\CompareSelectionWithBaselineCommand.png" usedList="bmpPic1, bmpPic2, bmpPicSearch, bmpPicX, bmpPicArrows, bmpPicStrikethrough" />
-    </Bitmaps>
-  </Commands>
+			<Bitmap guid="guidImages" href="Resources\AboutZraxionCommand.png" usedList="bmpPic1, bmpPic2, bmpPicSearch, bmpPicX, bmpPicArrows, bmpPicStrikethrough" />
+			<Bitmap guid="guidImages3" href="Resources\AverageSelectedCellsCommand.png" usedList="bmpPic1, bmpPic2, bmpPicSearch, bmpPicX, bmpPicArrows, bmpPicStrikethrough" />
+			<Bitmap guid="guidImages4" href="Resources\MinSelectedCellsCommand.png" usedList="bmpPic1, bmpPic2, bmpPicSearch, bmpPicX, bmpPicArrows, bmpPicStrikethrough" />
+			<Bitmap guid="guidImages5" href="Resources\MaxSelectedCellsCommand.png" usedList="bmpPic1, bmpPic2, bmpPicSearch, bmpPicX, bmpPicArrows, bmpPicStrikethrough" />
+			<Bitmap guid="guidImages6" href="Resources\CountSelectedCellsCommand.png" usedList="bmpPic1, bmpPic2, bmpPicSearch, bmpPicX, bmpPicArrows, bmpPicStrikethrough" />
+			<Bitmap guid="guidImages7" href="Resources\GridAnalyticsSnapshot.png" usedList="bmpPic1, bmpPic2, bmpPicSearch, bmpPicX, bmpPicArrows, bmpPicStrikethrough" />
+			<Bitmap guid="guidImages8" href="Resources\GridAnalyticsComparison.png" usedList="bmpPic1, bmpPic2, bmpPicSearch, bmpPicX, bmpPicArrows, bmpPicStrikethrough" />
+			<Bitmap guid="guidImages9" href="Resources\GridComparisonSession.png" usedList="bmpPic1, bmpPic2, bmpPicSearch, bmpPicX, bmpPicArrows, bmpPicStrikethrough" />
+			<Bitmap guid="guidImages10" href="Resources\SetComparisonBaselineCommand.png" usedList="bmpPic1, bmpPic2, bmpPicSearch, bmpPicX, bmpPicArrows, bmpPicStrikethrough" />
+			<Bitmap guid="guidImages11" href="Resources\CompareSelectionWithBaselineCommand.png" usedList="bmpPic1, bmpPic2, bmpPicSearch, bmpPicX, bmpPicArrows, bmpPicStrikethrough" />
+		</Bitmaps>
+	</Commands>
 
-  <Symbols>
-    <!-- This is the package guid. -->
-    <GuidSymbol name="guidZraxionExtensionPackage" value="{adba31ac-1eb5-48ec-b2e9-5d4fd241b075}" />
+	<Symbols>
+		<GuidSymbol name="guidZraxionExtensionPackage"
+					value="{adba31ac-1eb5-48ec-b2e9-5d4fd241b075}" />
 
-    <!-- This is the guid used to group the menu commands together -->
-    <GuidSymbol name="guidZraxionExtensionPackageCmdSet" value="{af1b02be-ba8f-4292-9d65-c7399d43c1e5}">
-      <IDSymbol name="MyMenuGroup" value="0x1020" />
-      <IDSymbol name="AboutZraxionCommandId" value="0x0100" />
-	  <IDSymbol name="InspectResultsGridCommandId" value="0x0101" />
-		<IDSymbol name="AverageSelectedCellsCommandId" value="0x0103" />
-		<IDSymbol name="MinSelectedCellsCommandId" value="0x0104" />
-		<IDSymbol name="MaxSelectedCellsCommandId" value="0x0105" />
-		<IDSymbol name="CountSelectedCellsCommandId" value="0x0106" />
-		<IDSymbol name="SetComparisonBaselineCommandId" value="0x0107" />
-		<IDSymbol name="CompareSelectionWithBaselineCommandId" value="0x0108" />
+		<GuidSymbol name="guidZraxionExtensionPackageCmdSet"
+					value="{af1b02be-ba8f-4292-9d65-c7399d43c1e5}">
+			<!-- Existing command IDs are unchanged. -->
+			<IDSymbol name="AboutZraxionCommandId" value="0x0100" />
+			<IDSymbol name="InspectResultsGridCommandId" value="0x0101" />
+			<IDSymbol name="SumSelectedCellsCommandId" value="0x0102" />
+			<IDSymbol name="AverageSelectedCellsCommandId" value="0x0103" />
+			<IDSymbol name="MinSelectedCellsCommandId" value="0x0104" />
+			<IDSymbol name="MaxSelectedCellsCommandId" value="0x0105" />
+			<IDSymbol name="CountSelectedCellsCommandId" value="0x0106" />
+			<IDSymbol name="SetComparisonBaselineCommandId" value="0x0107" />
+			<IDSymbol name="CompareSelectionWithBaselineCommandId" value="0x0108" />
+
+			<!-- New menu/group IDs use a separate range for safe rollback. -->
+			<IDSymbol name="ZraxionToolsMenu" value="0x1100" />
+			<IDSymbol name="ZraxionAnalyticsMenu" value="0x1110" />
+			<IDSymbol name="ZraxionCompareMenu" value="0x1120" />
+			<IDSymbol name="ZraxionToolsPlacementGroup" value="0x1200" />
+			<IDSymbol name="ZraxionRootGroup" value="0x1210" />
+			<IDSymbol name="ZraxionAnalyticsGroup" value="0x1220" />
+			<IDSymbol name="ZraxionCompareGroup" value="0x1230" />
+			<IDSymbol name="ZraxionAboutGroup" value="0x1240" />
+		</GuidSymbol>
+
+		<GuidSymbol name="guidImages" value="{9fdb714e-e81d-4022-ad9e-ffc7609e4b63}">
+			<IDSymbol name="bmpPic1" value="1" />
+			<IDSymbol name="bmpPic2" value="2" />
+			<IDSymbol name="bmpPicSearch" value="3" />
+			<IDSymbol name="bmpPicX" value="4" />
+			<IDSymbol name="bmpPicArrows" value="5" />
+			<IDSymbol name="bmpPicStrikethrough" value="6" />
+		</GuidSymbol>
 
 
-	
-    </GuidSymbol>
 
-	  <GuidSymbol name="guidZraxionExtensionPackageCmdSet" value="{af1b02be-ba8f-4292-9d65-c7399d43c1e5}">
+		<GuidSymbol value="{c79c66ee-4a71-48da-8ec5-358404089c31}" name="guidImages2">
+			<IDSymbol name="bmpPic1" value="1" />
+			<IDSymbol name="bmpPic2" value="2" />
+			<IDSymbol name="bmpPicSearch" value="3" />
+			<IDSymbol name="bmpPicX" value="4" />
+			<IDSymbol name="bmpPicArrows" value="5" />
+			<IDSymbol name="bmpPicStrikethrough" value="6" />
+		</GuidSymbol>
 
-		  <IDSymbol name="MyMenuGroup" value="0x1020" />
-		  <IDSymbol name="AboutZraxionCommandId" value="0x0100" />
-		  <IDSymbol name="InspectResultsGridCommandId" value="0x0101" />
-		  <IDSymbol name="SumSelectedCellsCommandId" value="0x0102" />
+		<GuidSymbol value="{1369b920-7825-41b5-bffa-6777cf155954}" name="guidImages1">
+			<IDSymbol name="bmpPic1" value="1" />
+			<IDSymbol name="bmpPic2" value="2" />
+			<IDSymbol name="bmpPicSearch" value="3" />
+			<IDSymbol name="bmpPicX" value="4" />
+			<IDSymbol name="bmpPicArrows" value="5" />
+			<IDSymbol name="bmpPicStrikethrough" value="6" />
+		</GuidSymbol>
 
-	  </GuidSymbol>
+		<GuidSymbol value="{746d253a-75d1-49ae-bebb-da0968cc2ed7}" name="guidImages3">
+			<IDSymbol name="bmpPic1" value="1" />
+			<IDSymbol name="bmpPic2" value="2" />
+			<IDSymbol name="bmpPicSearch" value="3" />
+			<IDSymbol name="bmpPicX" value="4" />
+			<IDSymbol name="bmpPicArrows" value="5" />
+			<IDSymbol name="bmpPicStrikethrough" value="6" />
+		</GuidSymbol>
 
-    <GuidSymbol name="guidImages" value="{9fdb714e-e81d-4022-ad9e-ffc7609e4b63}">
-      <IDSymbol name="bmpPic1" value="1" />
-      <IDSymbol name="bmpPic2" value="2" />
-      <IDSymbol name="bmpPicSearch" value="3" />
-      <IDSymbol name="bmpPicX" value="4" />
-      <IDSymbol name="bmpPicArrows" value="5" />
-      <IDSymbol name="bmpPicStrikethrough" value="6" />
-    </GuidSymbol>
-  
+		<GuidSymbol value="{65545fbf-fcae-4f30-9542-6da30659a6c8}" name="guidImages4">
+			<IDSymbol name="bmpPic1" value="1" />
+			<IDSymbol name="bmpPic2" value="2" />
+			<IDSymbol name="bmpPicSearch" value="3" />
+			<IDSymbol name="bmpPicX" value="4" />
+			<IDSymbol name="bmpPicArrows" value="5" />
+			<IDSymbol name="bmpPicStrikethrough" value="6" />
+		</GuidSymbol>
 
-  
-    <GuidSymbol value="{c79c66ee-4a71-48da-8ec5-358404089c31}" name="guidImages2">
-      <IDSymbol name="bmpPic1" value="1" />
-      <IDSymbol name="bmpPic2" value="2" />
-      <IDSymbol name="bmpPicSearch" value="3" />
-      <IDSymbol name="bmpPicX" value="4" />
-      <IDSymbol name="bmpPicArrows" value="5" />
-      <IDSymbol name="bmpPicStrikethrough" value="6" />
-    </GuidSymbol>
-  
-    <GuidSymbol value="{1369b920-7825-41b5-bffa-6777cf155954}" name="guidImages1">
-      <IDSymbol name="bmpPic1" value="1" />
-      <IDSymbol name="bmpPic2" value="2" />
-      <IDSymbol name="bmpPicSearch" value="3" />
-      <IDSymbol name="bmpPicX" value="4" />
-      <IDSymbol name="bmpPicArrows" value="5" />
-      <IDSymbol name="bmpPicStrikethrough" value="6" />
-    </GuidSymbol>
-  
-    <GuidSymbol value="{746d253a-75d1-49ae-bebb-da0968cc2ed7}" name="guidImages3">
-      <IDSymbol name="bmpPic1" value="1" />
-      <IDSymbol name="bmpPic2" value="2" />
-      <IDSymbol name="bmpPicSearch" value="3" />
-      <IDSymbol name="bmpPicX" value="4" />
-      <IDSymbol name="bmpPicArrows" value="5" />
-      <IDSymbol name="bmpPicStrikethrough" value="6" />
-    </GuidSymbol>
-  
-    <GuidSymbol value="{65545fbf-fcae-4f30-9542-6da30659a6c8}" name="guidImages4">
-      <IDSymbol name="bmpPic1" value="1" />
-      <IDSymbol name="bmpPic2" value="2" />
-      <IDSymbol name="bmpPicSearch" value="3" />
-      <IDSymbol name="bmpPicX" value="4" />
-      <IDSymbol name="bmpPicArrows" value="5" />
-      <IDSymbol name="bmpPicStrikethrough" value="6" />
-    </GuidSymbol>
-  
-    <GuidSymbol value="{da7f352e-c76d-44e5-a940-603a53377522}" name="guidImages5">
-      <IDSymbol name="bmpPic1" value="1" />
-      <IDSymbol name="bmpPic2" value="2" />
-      <IDSymbol name="bmpPicSearch" value="3" />
-      <IDSymbol name="bmpPicX" value="4" />
-      <IDSymbol name="bmpPicArrows" value="5" />
-      <IDSymbol name="bmpPicStrikethrough" value="6" />
-    </GuidSymbol>
-  
-    <GuidSymbol value="{0aa73f63-9367-4139-8f47-26f9bc82bef3}" name="guidImages6">
-      <IDSymbol name="bmpPic1" value="1" />
-      <IDSymbol name="bmpPic2" value="2" />
-      <IDSymbol name="bmpPicSearch" value="3" />
-      <IDSymbol name="bmpPicX" value="4" />
-      <IDSymbol name="bmpPicArrows" value="5" />
-      <IDSymbol name="bmpPicStrikethrough" value="6" />
-    </GuidSymbol>
-  
-    <GuidSymbol value="{8fd92ceb-aa8d-4ce8-ae28-ba72465c758d}" name="guidImages7">
-      <IDSymbol name="bmpPic1" value="1" />
-      <IDSymbol name="bmpPic2" value="2" />
-      <IDSymbol name="bmpPicSearch" value="3" />
-      <IDSymbol name="bmpPicX" value="4" />
-      <IDSymbol name="bmpPicArrows" value="5" />
-      <IDSymbol name="bmpPicStrikethrough" value="6" />
-    </GuidSymbol>
-  
-    <GuidSymbol value="{2d90804b-dd6f-405b-ace9-7df9f19d0816}" name="guidImages8">
-      <IDSymbol name="bmpPic1" value="1" />
-      <IDSymbol name="bmpPic2" value="2" />
-      <IDSymbol name="bmpPicSearch" value="3" />
-      <IDSymbol name="bmpPicX" value="4" />
-      <IDSymbol name="bmpPicArrows" value="5" />
-      <IDSymbol name="bmpPicStrikethrough" value="6" />
-    </GuidSymbol>
-  
-    <GuidSymbol value="{e1158d0f-2e65-46f6-a78a-ea26f667320e}" name="guidImages9">
-      <IDSymbol name="bmpPic1" value="1" />
-      <IDSymbol name="bmpPic2" value="2" />
-      <IDSymbol name="bmpPicSearch" value="3" />
-      <IDSymbol name="bmpPicX" value="4" />
-      <IDSymbol name="bmpPicArrows" value="5" />
-      <IDSymbol name="bmpPicStrikethrough" value="6" />
-    </GuidSymbol>
-  
-    <GuidSymbol value="{cc33c0df-01bc-4f9d-9c0d-61d520378f6b}" name="guidImages10">
-      <IDSymbol name="bmpPic1" value="1" />
-      <IDSymbol name="bmpPic2" value="2" />
-      <IDSymbol name="bmpPicSearch" value="3" />
-      <IDSymbol name="bmpPicX" value="4" />
-      <IDSymbol name="bmpPicArrows" value="5" />
-      <IDSymbol name="bmpPicStrikethrough" value="6" />
-    </GuidSymbol>
-  
-    <GuidSymbol value="{446d47b8-5e6e-46fa-b24c-a000bb6a14ce}" name="guidImages11">
-      <IDSymbol name="bmpPic1" value="1" />
-      <IDSymbol name="bmpPic2" value="2" />
-      <IDSymbol name="bmpPicSearch" value="3" />
-      <IDSymbol name="bmpPicX" value="4" />
-      <IDSymbol name="bmpPicArrows" value="5" />
-      <IDSymbol name="bmpPicStrikethrough" value="6" />
-    </GuidSymbol>
-  </Symbols>
+		<GuidSymbol value="{da7f352e-c76d-44e5-a940-603a53377522}" name="guidImages5">
+			<IDSymbol name="bmpPic1" value="1" />
+			<IDSymbol name="bmpPic2" value="2" />
+			<IDSymbol name="bmpPicSearch" value="3" />
+			<IDSymbol name="bmpPicX" value="4" />
+			<IDSymbol name="bmpPicArrows" value="5" />
+			<IDSymbol name="bmpPicStrikethrough" value="6" />
+		</GuidSymbol>
+
+		<GuidSymbol value="{0aa73f63-9367-4139-8f47-26f9bc82bef3}" name="guidImages6">
+			<IDSymbol name="bmpPic1" value="1" />
+			<IDSymbol name="bmpPic2" value="2" />
+			<IDSymbol name="bmpPicSearch" value="3" />
+			<IDSymbol name="bmpPicX" value="4" />
+			<IDSymbol name="bmpPicArrows" value="5" />
+			<IDSymbol name="bmpPicStrikethrough" value="6" />
+		</GuidSymbol>
+
+		<GuidSymbol value="{8fd92ceb-aa8d-4ce8-ae28-ba72465c758d}" name="guidImages7">
+			<IDSymbol name="bmpPic1" value="1" />
+			<IDSymbol name="bmpPic2" value="2" />
+			<IDSymbol name="bmpPicSearch" value="3" />
+			<IDSymbol name="bmpPicX" value="4" />
+			<IDSymbol name="bmpPicArrows" value="5" />
+			<IDSymbol name="bmpPicStrikethrough" value="6" />
+		</GuidSymbol>
+
+		<GuidSymbol value="{2d90804b-dd6f-405b-ace9-7df9f19d0816}" name="guidImages8">
+			<IDSymbol name="bmpPic1" value="1" />
+			<IDSymbol name="bmpPic2" value="2" />
+			<IDSymbol name="bmpPicSearch" value="3" />
+			<IDSymbol name="bmpPicX" value="4" />
+			<IDSymbol name="bmpPicArrows" value="5" />
+			<IDSymbol name="bmpPicStrikethrough" value="6" />
+		</GuidSymbol>
+
+		<GuidSymbol value="{e1158d0f-2e65-46f6-a78a-ea26f667320e}" name="guidImages9">
+			<IDSymbol name="bmpPic1" value="1" />
+			<IDSymbol name="bmpPic2" value="2" />
+			<IDSymbol name="bmpPicSearch" value="3" />
+			<IDSymbol name="bmpPicX" value="4" />
+			<IDSymbol name="bmpPicArrows" value="5" />
+			<IDSymbol name="bmpPicStrikethrough" value="6" />
+		</GuidSymbol>
+
+		<GuidSymbol value="{cc33c0df-01bc-4f9d-9c0d-61d520378f6b}" name="guidImages10">
+			<IDSymbol name="bmpPic1" value="1" />
+			<IDSymbol name="bmpPic2" value="2" />
+			<IDSymbol name="bmpPicSearch" value="3" />
+			<IDSymbol name="bmpPicX" value="4" />
+			<IDSymbol name="bmpPicArrows" value="5" />
+			<IDSymbol name="bmpPicStrikethrough" value="6" />
+		</GuidSymbol>
+
+		<GuidSymbol value="{446d47b8-5e6e-46fa-b24c-a000bb6a14ce}" name="guidImages11">
+			<IDSymbol name="bmpPic1" value="1" />
+			<IDSymbol name="bmpPic2" value="2" />
+			<IDSymbol name="bmpPicSearch" value="3" />
+			<IDSymbol name="bmpPicX" value="4" />
+			<IDSymbol name="bmpPicArrows" value="5" />
+			<IDSymbol name="bmpPicStrikethrough" value="6" />
+		</GuidSymbol>
+	</Symbols>
 </CommandTable>
