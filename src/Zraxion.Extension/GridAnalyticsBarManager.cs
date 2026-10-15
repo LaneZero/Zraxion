@@ -354,6 +354,55 @@ namespace Zraxion.Extension
             }
         }
 
+        internal static void ShowSelectionMetric(
+            string metric)
+        {
+            if (string.IsNullOrWhiteSpace(metric))
+            {
+                throw new ArgumentException(
+                    "A metric name is required.",
+                    nameof(metric));
+            }
+
+            AttachToCurrentResults(
+                showSelectionMetrics: false);
+
+            var bar = analyticsBar;
+
+            if (bar is null ||
+                bar.IsDisposed)
+            {
+                return;
+            }
+
+            bar.ShowSelectionMetricView(metric);
+
+            if (analyticsHost is not null &&
+                !analyticsHost.IsDisposed)
+            {
+                PositionAnalyticsBar(analyticsHost);
+            }
+        }
+
+        internal static void ClearComparisonView()
+        {
+            var bar = analyticsBar;
+
+            if (bar is null ||
+                bar.IsDisposed)
+            {
+                return;
+            }
+
+            bar.ClearComparison();
+
+            if (activeGrid is not null &&
+                !activeGrid.IsDisposed)
+            {
+                UpdateFromGrid(activeGrid);
+            }
+        }
+
         internal static void ShowComparison(
             GridAnalyticsComparison comparison)
         {

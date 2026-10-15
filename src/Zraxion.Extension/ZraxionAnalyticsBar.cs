@@ -27,6 +27,7 @@ namespace Zraxion.Extension
 
         private GridAnalyticsComparison? lastComparison;
         private bool comparisonMode;
+        private string? focusedMetric;
 
 
         private readonly Control sumSeparator;
@@ -194,6 +195,7 @@ namespace Zraxion.Extension
             showSelectionMetricsItem.Click += (_, __) =>
             {
                 comparisonMode = false;
+                focusedMetric = null;
                 ApplyCurrentView();
             };
 
@@ -519,6 +521,33 @@ namespace Zraxion.Extension
         public void ShowSelectionMetricsView()
         {
             comparisonMode = false;
+            focusedMetric = null;
+            ApplyCurrentView();
+        }
+
+        public void ShowSelectionMetricView(
+            string metric)
+        {
+            if (string.IsNullOrWhiteSpace(metric))
+            {
+                throw new ArgumentException(
+                    "A metric name is required.",
+                    nameof(metric));
+            }
+
+            comparisonMode = false;
+            focusedMetric = metric.Trim().ToUpperInvariant();
+            ApplyCurrentView();
+        }
+
+        public void ClearComparison()
+        {
+            lastComparison = null;
+            comparisonMode = false;
+            focusedMetric = null;
+            showComparisonMenuItem.Enabled = false;
+            compareLabel.Text = string.Empty;
+
             ApplyCurrentView();
         }
 
@@ -568,6 +597,34 @@ namespace Zraxion.Extension
 
                 compareSeparator.Visible = false;
                 compareLabel.Visible = true;
+
+                return;
+            }
+
+            // A context-menu metric action intentionally focuses the bar on that
+            // metric without changing the user's persisted metric preferences.
+            if (!string.IsNullOrEmpty(focusedMetric))
+            {
+                resultLabel.Visible = true;
+
+                sumLabel.Visible = focusedMetric == "SUM";
+                countLabel.Visible = focusedMetric == "COUNT";
+                averageLabel.Visible = focusedMetric == "AVG";
+                minLabel.Visible = focusedMetric == "MIN";
+                maxLabel.Visible = focusedMetric == "MAX";
+                nullLabel.Visible = false;
+                nonNumericLabel.Visible = false;
+
+                sumSeparator.Visible = sumLabel.Visible;
+                countSeparator.Visible = countLabel.Visible;
+                averageSeparator.Visible = averageLabel.Visible;
+                minSeparator.Visible = minLabel.Visible;
+                maxSeparator.Visible = maxLabel.Visible;
+                nullSeparator.Visible = false;
+                nonNumericSeparator.Visible = false;
+
+                compareLabel.Visible = false;
+                compareSeparator.Visible = false;
 
                 return;
             }

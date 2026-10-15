@@ -150,16 +150,7 @@
 				</Strings>
 			</Button>
 
-			<Button guid="guidZraxionExtensionPackageCmdSet"
-					id="InspectGridContextMenuCommandId"
-					priority="0x02F0"
-					type="Button">
-				<Parent guid="guidZraxionExtensionPackageCmdSet"
-						id="ZraxionAnalyticsGroup" />
-				<Strings>
-					<ButtonText>Inspect Grid Context Menu (Diagnostic)</ButtonText>
-				</Strings>
-			</Button>
+
 
 			<Button guid="guidZraxionExtensionPackageCmdSet"
 					id="SetComparisonBaselineCommandId"
@@ -231,7 +222,6 @@
 			<IDSymbol name="CountSelectedCellsCommandId" value="0x0106" />
 			<IDSymbol name="SetComparisonBaselineCommandId" value="0x0107" />
 			<IDSymbol name="CompareSelectionWithBaselineCommandId" value="0x0108" />
-			<IDSymbol name="InspectGridContextMenuCommandId" value="0x0109" />
 
 			<!-- New menu/group IDs use a separate range for safe rollback. -->
 			<IDSymbol name="ZraxionToolsMenu" value="0x1100" />

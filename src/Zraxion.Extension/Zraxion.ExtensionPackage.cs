@@ -71,7 +71,6 @@ namespace Zraxion.Extension
             await CountSelectedCellsCommand.InitializeAsync(this);
             await SetComparisonBaselineCommand.InitializeAsync(this);
             await CompareSelectionWithBaselineCommand.InitializeAsync(this);
-            await InspectGridContextMenuCommand.InitializeAsync(this);
             ResultsGridContextMenuManager.Initialize();
 
         }

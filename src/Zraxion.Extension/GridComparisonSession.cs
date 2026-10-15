@@ -11,9 +11,14 @@ namespace Zraxion.Extension
 {
     internal static class GridComparisonSession
     {
-        public static GridAnalyticsSnapshot? LeftSnapshot { get; private set; }
+        public static GridAnalyticsSnapshot? LeftSnapshot
+        {
+            get;
+            private set;
+        }
 
-        public static void SetLeft(GridAnalyticsSnapshot snapshot)
+        public static void SetLeft(
+            GridAnalyticsSnapshot snapshot)
         {
             LeftSnapshot = snapshot;
         }
