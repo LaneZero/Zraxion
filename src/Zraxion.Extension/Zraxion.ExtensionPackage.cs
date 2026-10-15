@@ -1,4 +1,5 @@
-﻿using Microsoft.VisualStudio.Shell;
+﻿using Microsoft.VisualStudio;
+using Microsoft.VisualStudio.Shell;
 using System;
 using System.Runtime.InteropServices;
 using System.Threading;
@@ -23,14 +24,25 @@ namespace Zraxion.Extension
     /// To get loaded into VS, the package must be referred by &lt;Asset Type="Microsoft.VisualStudio.VsPackage" ...&gt; in .vsixmanifest file.
     /// </para>
     /// </remarks>
-    [PackageRegistration(UseManagedResourcesOnly = true, AllowsBackgroundLoading = true)]
+    [PackageRegistration(
+        UseManagedResourcesOnly = true,
+        AllowsBackgroundLoading = true)]
     [Guid(ZraxionExtensionPackage.PackageGuidString)]
+
+    [ProvideAutoLoad(
+        VSConstants.UICONTEXT.NoSolution_string,
+        PackageAutoLoadFlags.BackgroundLoad)]
+
+    [ProvideAutoLoad(
+        VSConstants.UICONTEXT.SolutionExists_string,
+        PackageAutoLoadFlags.BackgroundLoad)]
+
     [ProvideMenuResource("Menus.ctmenu", 1)]
     public sealed class ZraxionExtensionPackage : AsyncPackage
     {
-         /// <summary>
-         /// ZraxionExtensionPackage GUID string.
-         /// </summary>
+        /// <summary>
+        /// ZraxionExtensionPackage GUID string.
+        /// </summary>
         public const string PackageGuidString = "adba31ac-1eb5-48ec-b2e9-5d4fd241b075";
 
         #region Package Members
@@ -59,14 +71,16 @@ namespace Zraxion.Extension
             await CountSelectedCellsCommand.InitializeAsync(this);
             await SetComparisonBaselineCommand.InitializeAsync(this);
             await CompareSelectionWithBaselineCommand.InitializeAsync(this);
+            await InspectGridContextMenuCommand.InitializeAsync(this);
+            ResultsGridContextMenuManager.Initialize();
 
         }
 
-        
 
-       
 
-       
+
+
+
 
         #endregion
     }

@@ -5,6 +5,9 @@ using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
 using System.Reflection;
+using OpCode = System.Reflection.Emit.OpCode;
+using OpCodes = System.Reflection.Emit.OpCodes;
+using OperandType = System.Reflection.Emit.OperandType;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows.Automation;
@@ -193,109 +196,109 @@ namespace Zraxion.Extension
         }
 
         /// <summary>
-/// Finds the active SSMS Results pane and inspects all native child windows
-/// hosted underneath it.
-/// </summary>
-public static string InspectResultsPaneChildren()
-{
-    var process = Process.GetCurrentProcess();
-
-    if (process.MainWindowHandle == IntPtr.Zero)
-    {
-        return "SSMS main window handle was not available.";
-    }
-
-    AutomationElement root;
-
-    try
-    {
-        root = AutomationElement.FromHandle(process.MainWindowHandle);
-    }
-    catch (Exception ex)
-    {
-        return $"Unable to access the SSMS automation root.\n\n{ex.Message}";
-    }
-
-    var resultsPanes = root.FindAll(
-        TreeScope.Descendants,
-        new AndCondition(
-            new PropertyCondition(
-                AutomationElement.NameProperty,
-                "Results"),
-            new PropertyCondition(
-                AutomationElement.ControlTypeProperty,
-                ControlType.Pane)));
-
-    AutomationElement? activeResultsPane = null;
-
-    foreach (AutomationElement element in resultsPanes)
-    {
-        try
+        /// Finds the active SSMS Results pane and inspects all native child windows
+        /// hosted underneath it.
+        /// </summary>
+        public static string InspectResultsPaneChildren()
         {
-            if (element.Current.HasKeyboardFocus)
+            var process = Process.GetCurrentProcess();
+
+            if (process.MainWindowHandle == IntPtr.Zero)
             {
-                activeResultsPane = element;
-                break;
+                return "SSMS main window handle was not available.";
             }
 
-            if (activeResultsPane is null &&
-                !element.Current.IsOffscreen)
+            AutomationElement root;
+
+            try
             {
-                activeResultsPane = element;
+                root = AutomationElement.FromHandle(process.MainWindowHandle);
             }
+            catch (Exception ex)
+            {
+                return $"Unable to access the SSMS automation root.\n\n{ex.Message}";
+            }
+
+            var resultsPanes = root.FindAll(
+                TreeScope.Descendants,
+                new AndCondition(
+                    new PropertyCondition(
+                        AutomationElement.NameProperty,
+                        "Results"),
+                    new PropertyCondition(
+                        AutomationElement.ControlTypeProperty,
+                        ControlType.Pane)));
+
+            AutomationElement? activeResultsPane = null;
+
+            foreach (AutomationElement element in resultsPanes)
+            {
+                try
+                {
+                    if (element.Current.HasKeyboardFocus)
+                    {
+                        activeResultsPane = element;
+                        break;
+                    }
+
+                    if (activeResultsPane is null &&
+                        !element.Current.IsOffscreen)
+                    {
+                        activeResultsPane = element;
+                    }
+                }
+                catch (ElementNotAvailableException)
+                {
+                    // Ignore controls that disappear while SSMS updates its UI.
+                }
+            }
+
+            if (activeResultsPane is null)
+            {
+                return "No active Results pane was detected.";
+            }
+
+            var nativeHandle =
+                new IntPtr(activeResultsPane.Current.NativeWindowHandle);
+
+            if (nativeHandle == IntPtr.Zero)
+            {
+                return "The active Results pane does not expose a native HWND.";
+            }
+
+            var entries = new List<string>();
+
+            // Inspect the Results host itself.
+            AddNativeWindowEntry(nativeHandle, entries);
+
+            // Inspect every native child hosted inside Results.
+            EnumChildWindows(
+                nativeHandle,
+                (childHandle, _) =>
+                {
+                    AddNativeWindowEntry(childHandle, entries);
+                    return entries.Count < 100;
+                },
+                IntPtr.Zero);
+
+            var builder = new StringBuilder();
+
+            builder.AppendLine(
+                $"Results HWND: 0x{nativeHandle.ToInt64():X}");
+
+            builder.AppendLine(
+                $"Native controls found: {entries.Count}");
+
+            builder.AppendLine();
+
+            for (var i = 0; i < entries.Count; i++)
+            {
+                builder.AppendLine($"{i + 1}. {entries[i]}");
+                builder.AppendLine();
+            }
+
+            return builder.ToString();
         }
-        catch (ElementNotAvailableException)
-        {
-            // Ignore controls that disappear while SSMS updates its UI.
-        }
-    }
-
-    if (activeResultsPane is null)
-    {
-        return "No active Results pane was detected.";
-    }
-
-    var nativeHandle =
-        new IntPtr(activeResultsPane.Current.NativeWindowHandle);
-
-    if (nativeHandle == IntPtr.Zero)
-    {
-        return "The active Results pane does not expose a native HWND.";
-    }
-
-    var entries = new List<string>();
-
-    // Inspect the Results host itself.
-    AddNativeWindowEntry(nativeHandle, entries);
-
-    // Inspect every native child hosted inside Results.
-    EnumChildWindows(
-        nativeHandle,
-        (childHandle, _) =>
-        {
-            AddNativeWindowEntry(childHandle, entries);
-            return entries.Count < 100;
-        },
-        IntPtr.Zero);
-
-    var builder = new StringBuilder();
-
-    builder.AppendLine(
-        $"Results HWND: 0x{nativeHandle.ToInt64():X}");
-
-    builder.AppendLine(
-        $"Native controls found: {entries.Count}");
-
-    builder.AppendLine();
-
-    for (var i = 0; i < entries.Count; i++)
-    {
-        builder.AppendLine($"{i + 1}. {entries[i]}");
-        builder.AppendLine();
-    }
-
-    return builder.ToString();
-}
 
 
 
@@ -1131,6 +1134,737 @@ public static string InspectResultsPaneChildren()
             return null;
         }
 
+        internal static string InspectGridContextMenuRuntime()
+        {
+            var grid = GetFocusedResultsGrid();
+
+            if (grid is null)
+            {
+                return "No focused SSMS Results Grid was detected.";
+            }
+
+            var builder = new StringBuilder();
+
+            builder.AppendLine("Zraxion Results Grid Context Menu Diagnostic");
+            builder.AppendLine(new string('=', 44));
+            builder.AppendLine();
+
+            builder.AppendLine($"Runtime type: {grid.GetType().FullName}");
+            builder.AppendLine($"Assembly: {grid.GetType().Assembly.FullName}");
+            builder.AppendLine($"Base type: {grid.GetType().BaseType?.FullName ?? "<none>"}");
+            builder.AppendLine();
+
+            builder.AppendLine("WinForms context menu properties:");
+            builder.AppendLine(
+                $"- ContextMenuStrip: {DescribeObject(grid.ContextMenuStrip)}");
+            builder.AppendLine(
+                $"- ContextMenu: {DescribeObject(grid.ContextMenu)}");
+            builder.AppendLine();
+
+            builder.AppendLine("Type hierarchy:");
+            for (Type? type = grid.GetType();
+                 type is not null;
+                 type = type.BaseType)
+            {
+                builder.AppendLine($"- {type.FullName}");
+            }
+
+            builder.AppendLine();
+            builder.AppendLine("Interesting properties:");
+
+            foreach (var property in GetContextMenuRelatedProperties(grid.GetType()))
+            {
+                builder.AppendLine(
+                    $"- {property.DeclaringType?.FullName}.{property.Name} " +
+                    $"[{property.PropertyType.FullName}] = " +
+                    TryDescribePropertyValue(grid, property));
+            }
+
+            builder.AppendLine();
+            builder.AppendLine("Interesting fields:");
+
+            foreach (var field in GetContextMenuRelatedFields(grid.GetType()))
+            {
+                builder.AppendLine(
+                    $"- {field.DeclaringType?.FullName}.{field.Name} " +
+                    $"[{field.FieldType.FullName}] = " +
+                    TryDescribeFieldValue(grid, field));
+            }
+
+            builder.AppendLine();
+            builder.AppendLine("Interesting events:");
+
+            foreach (var eventInfo in GetContextMenuRelatedEvents(grid.GetType()))
+            {
+                builder.AppendLine(
+                    $"- {eventInfo.DeclaringType?.FullName}.{eventInfo.Name} " +
+                    $"[{eventInfo.EventHandlerType?.FullName ?? "<unknown>"}]");
+            }
+
+            builder.AppendLine();
+            builder.AppendLine("Interesting methods:");
+
+            foreach (var method in GetContextMenuRelatedMethods(grid.GetType()))
+            {
+                var parameters =
+                    string.Join(
+                        ", ",
+                        method
+                            .GetParameters()
+                            .Select(
+                                parameter =>
+                                    $"{parameter.ParameterType.Name} {parameter.Name}"));
+
+                builder.AppendLine(
+                    $"- {method.DeclaringType?.FullName}.{method.Name}({parameters})");
+            }
+
+            builder.AppendLine();
+            builder.AppendLine("GridResultsGrid.OnMouseDown IL:");
+            builder.AppendLine(
+                DumpMethodIl(
+                    grid.GetType(),
+                    "OnMouseDown"));
+
+            var gridControlType = grid.GetType().BaseType;
+
+            if (gridControlType is not null)
+            {
+                builder.AppendLine();
+                builder.AppendLine("GridControl.OnMouseDown IL:");
+                builder.AppendLine(
+                    DumpMethodIl(
+                        gridControlType,
+                        "OnMouseDown"));
+
+                builder.AppendLine();
+                builder.AppendLine("GridControl.HandleCustomCellMouseBtnDown IL:");
+                builder.AppendLine(
+                    DumpMethodIl(
+                        gridControlType,
+                        "HandleCustomCellMouseBtnDown"));
+
+                builder.AppendLine();
+                builder.AppendLine("GridControl.OnMouseButtonClicking IL:");
+                builder.AppendLine(
+                    DumpMethodIl(
+                        gridControlType,
+                        "OnMouseButtonClicking"));
+
+                builder.AppendLine();
+                builder.AppendLine("GridControl.OnMouseButtonClicked IL:");
+                builder.AppendLine(
+                    DumpMethodIl(
+                        gridControlType,
+                        "OnMouseButtonClicked"));
+
+                builder.AppendLine();
+                builder.AppendLine("GridControl.OnGridSpecialEvent IL:");
+                builder.AppendLine(
+                    DumpMethodIl(
+                        gridControlType,
+                        "OnGridSpecialEvent"));
+            }
+
+            return builder.ToString();
+        }
+
+        private static string DumpMethodIl(
+            Type runtimeType,
+            string methodName)
+        {
+            var method =
+                runtimeType
+                    .GetMethods(
+                        BindingFlags.Instance |
+                        BindingFlags.Public |
+                        BindingFlags.NonPublic |
+                        BindingFlags.DeclaredOnly)
+                    .FirstOrDefault(
+                        candidate =>
+                            string.Equals(
+                                candidate.Name,
+                                methodName,
+                                StringComparison.Ordinal));
+
+            if (method is null)
+            {
+                return "<method not found on runtime type>";
+            }
+
+            var body = method.GetMethodBody();
+
+            if (body is null)
+            {
+                return "<method has no IL body>";
+            }
+
+            var bytes = body.GetILAsByteArray();
+
+            if (bytes is null || bytes.Length == 0)
+            {
+                return "<empty IL body>";
+            }
+
+            var oneByte = new OpCode[0x100];
+            var twoByte = new OpCode[0x100];
+
+            foreach (var field in typeof(OpCodes).GetFields(
+                         BindingFlags.Public |
+                         BindingFlags.Static))
+            {
+                if (field.GetValue(null) is not OpCode opCode)
+                {
+                    continue;
+                }
+
+                var value = unchecked((ushort)opCode.Value);
+
+                if (value < 0x100)
+                {
+                    oneByte[value] = opCode;
+                }
+                else if ((value & 0xFF00) == 0xFE00)
+                {
+                    twoByte[value & 0xFF] = opCode;
+                }
+            }
+
+            var builder = new StringBuilder();
+            var module = method.Module;
+            var position = 0;
+
+            while (position < bytes.Length)
+            {
+                var offset = position;
+                OpCode opCode;
+
+                var first = bytes[position++];
+
+                if (first == 0xFE)
+                {
+                    if (position >= bytes.Length)
+                    {
+                        builder.AppendLine(
+                            $"IL_{offset:X4}: <truncated opcode>");
+                        break;
+                    }
+
+                    opCode = twoByte[bytes[position++]];
+                }
+                else
+                {
+                    opCode = oneByte[first];
+                }
+
+                if (opCode.Size == 0)
+                {
+                    builder.AppendLine(
+                        $"IL_{offset:X4}: <unknown opcode 0x{first:X2}>");
+                    break;
+                }
+
+                string operand;
+
+                try
+                {
+                    operand =
+                        ReadIlOperand(
+                            bytes,
+                            ref position,
+                            opCode,
+                            module,
+                            method);
+                }
+                catch (Exception ex)
+                {
+                    operand =
+                        $"<operand decode failed: {ex.GetType().Name}>";
+
+                    builder.AppendLine(
+                        $"IL_{offset:X4}: {opCode.Name} {operand}");
+
+                    break;
+                }
+
+                builder.AppendLine(
+                    string.IsNullOrEmpty(operand)
+                        ? $"IL_{offset:X4}: {opCode.Name}"
+                        : $"IL_{offset:X4}: {opCode.Name} {operand}");
+            }
+
+            return builder.ToString();
+        }
+
+        private static string ReadIlOperand(
+            byte[] il,
+            ref int position,
+            OpCode opCode,
+            Module module,
+            MethodBase contextMethod)
+        {
+            switch (opCode.OperandType)
+            {
+                case OperandType.InlineNone:
+                    return string.Empty;
+
+                case OperandType.ShortInlineI:
+                    return il[position++].ToString(
+                        CultureInfo.InvariantCulture);
+
+                case OperandType.InlineI:
+                    {
+                        var value =
+                            BitConverter.ToInt32(il, position);
+                        position += 4;
+                        return value.ToString(
+                            CultureInfo.InvariantCulture);
+                    }
+
+                case OperandType.InlineI8:
+                    {
+                        var value =
+                            BitConverter.ToInt64(il, position);
+                        position += 8;
+                        return value.ToString(
+                            CultureInfo.InvariantCulture);
+                    }
+
+                case OperandType.ShortInlineR:
+                    {
+                        var value =
+                            BitConverter.ToSingle(il, position);
+                        position += 4;
+                        return value.ToString(
+                            CultureInfo.InvariantCulture);
+                    }
+
+                case OperandType.InlineR:
+                    {
+                        var value =
+                            BitConverter.ToDouble(il, position);
+                        position += 8;
+                        return value.ToString(
+                            CultureInfo.InvariantCulture);
+                    }
+
+                case OperandType.ShortInlineBrTarget:
+                    {
+                        var delta =
+                            unchecked((sbyte)il[position++]);
+                        return
+                            $"IL_{position + delta:X4}";
+                    }
+
+                case OperandType.InlineBrTarget:
+                    {
+                        var delta =
+                            BitConverter.ToInt32(il, position);
+                        position += 4;
+                        return
+                            $"IL_{position + delta:X4}";
+                    }
+
+                case OperandType.InlineSwitch:
+                    {
+                        var count =
+                            BitConverter.ToInt32(il, position);
+                        position += 4;
+
+                        var basePosition =
+                            position + (count * 4);
+
+                        var targets =
+                            new string[count];
+
+                        for (var i = 0; i < count; i++)
+                        {
+                            var delta =
+                                BitConverter.ToInt32(
+                                    il,
+                                    position);
+
+                            position += 4;
+
+                            targets[i] =
+                                $"IL_{basePosition + delta:X4}";
+                        }
+
+                        return
+                            string.Join(", ", targets);
+                    }
+
+                case OperandType.InlineString:
+                    {
+                        var token =
+                            BitConverter.ToInt32(il, position);
+                        position += 4;
+
+                        try
+                        {
+                            return
+                                $"\"{module.ResolveString(token)}\"";
+                        }
+                        catch
+                        {
+                            return
+                                $"string-token 0x{token:X8}";
+                        }
+                    }
+
+                case OperandType.InlineMethod:
+                    {
+                        var token =
+                            BitConverter.ToInt32(il, position);
+                        position += 4;
+
+                        return
+                            ResolveMemberToken(
+                                module,
+                                token,
+                                contextMethod,
+                                MemberTypes.Method |
+                                MemberTypes.Constructor);
+                    }
+
+                case OperandType.InlineField:
+                    {
+                        var token =
+                            BitConverter.ToInt32(il, position);
+                        position += 4;
+
+                        return
+                            ResolveMemberToken(
+                                module,
+                                token,
+                                contextMethod,
+                                MemberTypes.Field);
+                    }
+
+                case OperandType.InlineType:
+                    {
+                        var token =
+                            BitConverter.ToInt32(il, position);
+                        position += 4;
+
+                        return
+                            ResolveTypeToken(
+                                module,
+                                token,
+                                contextMethod);
+                    }
+
+                case OperandType.InlineTok:
+                    {
+                        var token =
+                            BitConverter.ToInt32(il, position);
+                        position += 4;
+
+                        return
+                            ResolveGenericMemberToken(
+                                module,
+                                token,
+                                contextMethod);
+                    }
+
+                case OperandType.InlineSig:
+                    {
+                        var token =
+                            BitConverter.ToInt32(il, position);
+                        position += 4;
+
+                        return
+                            $"signature-token 0x{token:X8}";
+                    }
+
+                case OperandType.ShortInlineVar:
+                    return
+                        $"var {il[position++]}";
+
+                case OperandType.InlineVar:
+                    {
+                        var index =
+                            BitConverter.ToUInt16(il, position);
+                        position += 2;
+                        return
+                            $"var {index}";
+                    }
+
+                default:
+                    return
+                        $"<unsupported operand type: {opCode.OperandType}>";
+            }
+        }
+
+        private static string ResolveMemberToken(
+            Module module,
+            int token,
+            MethodBase contextMethod,
+            MemberTypes allowedTypes)
+        {
+            try
+            {
+                var member =
+                    module.ResolveMember(
+                        token,
+                        GetGenericTypeArguments(contextMethod),
+                        GetGenericMethodArguments(contextMethod));
+
+                if (member is null)
+                {
+                    return $"token 0x{token:X8}";
+                }
+
+                if ((member.MemberType & allowedTypes) == 0)
+                {
+                    return
+                        $"{member.DeclaringType?.FullName}.{member.Name}";
+                }
+
+                return
+                    $"{member.DeclaringType?.FullName}.{member.Name}";
+            }
+            catch
+            {
+                return
+                    $"token 0x{token:X8}";
+            }
+        }
+
+        private static string ResolveTypeToken(
+            Module module,
+            int token,
+            MethodBase contextMethod)
+        {
+            try
+            {
+                var type =
+                    module.ResolveType(
+                        token,
+                        GetGenericTypeArguments(contextMethod),
+                        GetGenericMethodArguments(contextMethod));
+
+                return type.FullName ?? type.Name;
+            }
+            catch
+            {
+                return $"type-token 0x{token:X8}";
+            }
+        }
+
+        private static string ResolveGenericMemberToken(
+            Module module,
+            int token,
+            MethodBase contextMethod)
+        {
+            try
+            {
+                var member =
+                    module.ResolveMember(
+                        token,
+                        GetGenericTypeArguments(contextMethod),
+                        GetGenericMethodArguments(contextMethod));
+
+                return
+                    member is null
+                        ? $"token 0x{token:X8}"
+                        : $"{member.DeclaringType?.FullName}.{member.Name}";
+            }
+            catch
+            {
+                return $"token 0x{token:X8}";
+            }
+        }
+
+        private static Type[]? GetGenericTypeArguments(
+            MethodBase method)
+        {
+            return
+                method.DeclaringType?.IsGenericType == true
+                    ? method.DeclaringType.GetGenericArguments()
+                    : null;
+        }
+
+        private static Type[]? GetGenericMethodArguments(
+            MethodBase method)
+        {
+            return
+                method.IsGenericMethod
+                    ? method.GetGenericArguments()
+                    : null;
+        }
+
+        private static IEnumerable<PropertyInfo>
+            GetContextMenuRelatedProperties(Type type)
+        {
+            return GetTypeHierarchy(type)
+                .SelectMany(
+                    current =>
+                        current.GetProperties(
+                            BindingFlags.Instance |
+                            BindingFlags.Public |
+                            BindingFlags.NonPublic |
+                            BindingFlags.DeclaredOnly))
+                .Where(
+                    property =>
+                        IsContextMenuRelatedName(property.Name) ||
+                        IsContextMenuRelatedType(property.PropertyType))
+                .OrderBy(property => property.Name);
+        }
+
+        private static IEnumerable<FieldInfo>
+            GetContextMenuRelatedFields(Type type)
+        {
+            return GetTypeHierarchy(type)
+                .SelectMany(
+                    current =>
+                        current.GetFields(
+                            BindingFlags.Instance |
+                            BindingFlags.Public |
+                            BindingFlags.NonPublic |
+                            BindingFlags.DeclaredOnly))
+                .Where(
+                    field =>
+                        IsContextMenuRelatedName(field.Name) ||
+                        IsContextMenuRelatedType(field.FieldType))
+                .OrderBy(field => field.Name);
+        }
+
+        private static IEnumerable<EventInfo>
+            GetContextMenuRelatedEvents(Type type)
+        {
+            return GetTypeHierarchy(type)
+                .SelectMany(
+                    current =>
+                        current.GetEvents(
+                            BindingFlags.Instance |
+                            BindingFlags.Public |
+                            BindingFlags.NonPublic |
+                            BindingFlags.DeclaredOnly))
+                .Where(
+                    eventInfo =>
+                        IsContextMenuRelatedName(eventInfo.Name) ||
+                        (eventInfo.EventHandlerType is not null &&
+                         IsContextMenuRelatedType(
+                             eventInfo.EventHandlerType)))
+                .OrderBy(eventInfo => eventInfo.Name);
+        }
+
+        private static IEnumerable<MethodInfo>
+            GetContextMenuRelatedMethods(Type type)
+        {
+            return GetTypeHierarchy(type)
+                .SelectMany(
+                    current =>
+                        current.GetMethods(
+                            BindingFlags.Instance |
+                            BindingFlags.Public |
+                            BindingFlags.NonPublic |
+                            BindingFlags.DeclaredOnly))
+                .Where(
+                    method =>
+                        IsContextMenuRelatedName(method.Name) ||
+                        IsContextMenuRelatedType(method.ReturnType) ||
+                        method
+                            .GetParameters()
+                            .Any(
+                                parameter =>
+                                    IsContextMenuRelatedType(
+                                        parameter.ParameterType)))
+                .Where(method => !method.IsSpecialName)
+                .OrderBy(method => method.Name);
+        }
+
+        private static IEnumerable<Type> GetTypeHierarchy(Type type)
+        {
+            for (Type? current = type;
+                 current is not null;
+                 current = current.BaseType)
+            {
+                yield return current;
+            }
+        }
+
+        private static bool IsContextMenuRelatedName(string name)
+        {
+            return
+                name.IndexOf(
+                    "Context",
+                    StringComparison.OrdinalIgnoreCase) >= 0 ||
+                name.IndexOf(
+                    "Menu",
+                    StringComparison.OrdinalIgnoreCase) >= 0 ||
+                name.IndexOf(
+                    "Popup",
+                    StringComparison.OrdinalIgnoreCase) >= 0 ||
+                name.IndexOf(
+                    "Command",
+                    StringComparison.OrdinalIgnoreCase) >= 0 ||
+                name.IndexOf(
+                    "Mouse",
+                    StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+
+        private static bool IsContextMenuRelatedType(Type type)
+        {
+            var name = type.FullName ?? type.Name;
+
+            return IsContextMenuRelatedName(name);
+        }
+
+        private static string TryDescribePropertyValue(
+            object instance,
+            PropertyInfo property)
+        {
+            if (property.GetIndexParameters().Length != 0)
+            {
+                return "<indexed>";
+            }
+
+            var getter = property.GetGetMethod(nonPublic: true);
+
+            if (getter is null)
+            {
+                return "<no getter>";
+            }
+
+            try
+            {
+                return DescribeObject(
+                    getter.Invoke(instance, null));
+            }
+            catch (Exception ex)
+            {
+                return $"<read failed: {ex.GetType().Name}>";
+            }
+        }
+
+        private static string TryDescribeFieldValue(
+            object instance,
+            FieldInfo field)
+        {
+            try
+            {
+                return DescribeObject(
+                    field.GetValue(instance));
+            }
+            catch (Exception ex)
+            {
+                return $"<read failed: {ex.GetType().Name}>";
+            }
+        }
+
+        private static string DescribeObject(object? value)
+        {
+            if (value is null)
+            {
+                return "<null>";
+            }
+
+            return
+                $"{value.GetType().FullName} :: {value}";
+        }
+
         internal static GridControl? GetFocusedResultsGridForUi()
         {
             return GetFocusedResultsGrid();
@@ -1246,7 +1980,7 @@ public static string InspectResultsPaneChildren()
             GridAnalyticsBarManager.ShowComparison(
              comparison);
 
-           
+
 
             return string.Empty;
         }
