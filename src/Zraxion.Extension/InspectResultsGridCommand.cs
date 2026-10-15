@@ -83,16 +83,7 @@ namespace Zraxion.Extension
         {
             ThreadHelper.ThrowIfNotOnUIThread();
 
-            //var message = ResultsGridProbe.InspectSelectedCellValues();
-            var message = ResultsGridProbe.InspectResultsGridParentChain();
-
-            VsShellUtilities.ShowMessageBox(
-                package,
-                message,
-                "Zraxion - Results Grid Probe",
-                OLEMSGICON.OLEMSGICON_INFO,
-                OLEMSGBUTTON.OLEMSGBUTTON_OK,
-                OLEMSGDEFBUTTON.OLEMSGDEFBUTTON_FIRST);
+            GridAnalyticsBarManager.AttachToCurrentResults();
         }
     }
 }

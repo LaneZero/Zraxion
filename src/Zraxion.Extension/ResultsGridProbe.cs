@@ -9,6 +9,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows.Automation;
 using System.Windows.Forms;
+using System.Drawing;
 
 
 namespace Zraxion.Extension
@@ -19,6 +20,7 @@ namespace Zraxion.Extension
     /// </summary>
     internal static class ResultsGridProbe
     {
+
 
         private delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
 
@@ -1129,7 +1131,16 @@ public static string InspectResultsPaneChildren()
             return null;
         }
 
+        internal static GridControl? GetFocusedResultsGridForUi()
+        {
+            return GetFocusedResultsGrid();
+        }
 
+        internal static int GetResultGridIndexForUi(
+            GridControl grid)
+        {
+            return GetResultGridIndex(grid);
+        }
 
 
         public static string SetCurrentSelectionAsComparisonBaseline()
@@ -1232,28 +1243,12 @@ public static string InspectResultsPaneChildren()
                 new GridAnalyticsComparison(
                     baseline,
                     current);
+            GridAnalyticsBarManager.ShowComparison(
+             comparison);
 
-            var differencePercent =
-                comparison.DifferencePercent.HasValue
-                    ? comparison.DifferencePercent.Value.ToString(
-                        "0.####",
-                        CultureInfo.CurrentCulture) + "%"
-                    : "N/A";
+           
 
-            var status =
-                comparison.IsMatch
-                    ? "MATCH"
-                    : "MISMATCH";
-
-            return
-                $"A SUM = {baseline.Sum.ToString("G29", CultureInfo.CurrentCulture)}\n" +
-                $"B SUM = {current.Sum.ToString("G29", CultureInfo.CurrentCulture)}\n\n" +
-                $"Difference (B - A) = " +
-                $"{comparison.Difference.ToString("G29", CultureInfo.CurrentCulture)}\n" +
-                $"Absolute Difference = " +
-                $"{comparison.AbsoluteDifference.ToString("G29", CultureInfo.CurrentCulture)}\n" +
-                $"Difference % = {differencePercent}\n\n" +
-                $"Status = {status}";
+            return string.Empty;
         }
         public static string InspectResultsGridParentChain()
         {
@@ -1286,7 +1281,293 @@ public static string InspectResultsPaneChildren()
 
             return builder.ToString();
         }
+        public static string InspectResultsContainerChildren()
+        {
+            var grid = GetFocusedResultsGrid();
 
+            if (grid is null)
+            {
+                return "No focused SSMS Results Grid was detected.";
+            }
+
+            var smartPanel = grid.Parent;
+            var multiControlPanel = smartPanel?.Parent;
+
+            if (smartPanel is null || multiControlPanel is null)
+            {
+                return "Expected Results Grid container hierarchy was not found.";
+            }
+
+            var builder = new StringBuilder();
+
+            builder.AppendLine("=== SmartPanel ===");
+            builder.AppendLine($"Type: {smartPanel.GetType().FullName}");
+            builder.AppendLine($"Children: {smartPanel.Controls.Count}");
+            builder.AppendLine();
+
+            for (var i = 0; i < smartPanel.Controls.Count; i++)
+            {
+                var child = smartPanel.Controls[i];
+
+                builder.AppendLine($"Child {i}");
+                builder.AppendLine($"Type: {child.GetType().FullName}");
+                builder.AppendLine($"Dock: {child.Dock}");
+                builder.AppendLine($"Bounds: {child.Bounds}");
+                builder.AppendLine();
+            }
+
+            builder.AppendLine("=== MultiControlPanel ===");
+            builder.AppendLine($"Type: {multiControlPanel.GetType().FullName}");
+            builder.AppendLine($"Children: {multiControlPanel.Controls.Count}");
+            builder.AppendLine();
+
+            for (var i = 0; i < multiControlPanel.Controls.Count; i++)
+            {
+                var child = multiControlPanel.Controls[i];
+
+                builder.AppendLine($"Child {i}");
+                builder.AppendLine($"Type: {child.GetType().FullName}");
+                builder.AppendLine($"Dock: {child.Dock}");
+                builder.AppendLine($"Bounds: {child.Bounds}");
+                builder.AppendLine($"Children: {child.Controls.Count}");
+                builder.AppendLine();
+            }
+
+            return builder.ToString();
+        }
+
+        public static string InspectSmartPanelRuntimeStructure()
+        {
+            var grid = GetFocusedResultsGrid();
+
+            if (grid is null)
+            {
+                return "No focused SSMS Results Grid was detected.";
+            }
+
+            var smartPanel = grid.Parent;
+
+            if (smartPanel is null)
+            {
+                return "SmartPanel parent was not found.";
+            }
+
+            var type = smartPanel.GetType();
+            var builder = new StringBuilder();
+
+            builder.AppendLine($"Type: {type.FullName}");
+            builder.AppendLine();
+
+            builder.AppendLine("=== Properties ===");
+
+            foreach (var property in type.GetProperties(
+                BindingFlags.Instance |
+                BindingFlags.Public |
+                BindingFlags.NonPublic))
+            {
+                if (property.Name.IndexOf("panel", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    property.Name.IndexOf("control", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    property.Name.IndexOf("layout", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    property.Name.IndexOf("split", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    property.Name.IndexOf("size", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    builder.AppendLine(
+                        $"{property.PropertyType.FullName} {property.Name}");
+                }
+            }
+
+            builder.AppendLine();
+            builder.AppendLine("=== Fields ===");
+
+            foreach (var field in type.GetFields(
+                BindingFlags.Instance |
+                BindingFlags.Public |
+                BindingFlags.NonPublic))
+            {
+                if (field.Name.IndexOf("panel", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    field.Name.IndexOf("control", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    field.Name.IndexOf("layout", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    field.Name.IndexOf("split", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    field.Name.IndexOf("size", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    builder.AppendLine(
+                        $"{field.FieldType.FullName} {field.Name}");
+                }
+            }
+
+            builder.AppendLine();
+            builder.AppendLine("=== Methods ===");
+
+            foreach (var method in type.GetMethods(
+                BindingFlags.Instance |
+                BindingFlags.Public |
+                BindingFlags.NonPublic))
+            {
+                if (method.Name.IndexOf("layout", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    method.Name.IndexOf("control", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    method.Name.IndexOf("split", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    method.Name.IndexOf("panel", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    builder.AppendLine(method.ToString());
+                }
+            }
+
+            return builder.ToString();
+        }
+
+
+        public static string AttachTestAnalyticsBar()
+        {
+            var grid = GetFocusedResultsGrid();
+
+            if (grid is null)
+            {
+                return "No focused SSMS Results Grid was detected.";
+            }
+
+            Control? current = grid;
+
+            while (current is not null &&
+                   current.GetType().FullName !=
+                   "Microsoft.SqlServer.Management.UI.VSIntegration.Editors.GridResultsTabPage")
+            {
+                current = current.Parent;
+            }
+
+            if (current is null)
+            {
+                return "GridResultsTabPage was not found.";
+            }
+
+            const string barName = "ZraxionAnalyticsBar";
+            const string labelName = "ZraxionAnalyticsLabel";
+
+            Panel? bar = current.Controls[barName] as Panel;
+            Label? label = null;
+
+            if (bar is null)
+            {
+                bar = new Panel
+                {
+                    Name = barName,
+                    Dock = DockStyle.Bottom,
+                    Height = 36,
+                    Padding = new Padding(10, 0, 10, 0)
+                };
+
+                label = new Label
+                {
+                    Name = labelName,
+                    AutoSize = false,
+                    Dock = DockStyle.Fill,
+                    TextAlign = ContentAlignment.MiddleLeft
+                };
+
+                bar.Controls.Add(label);
+
+                current.SuspendLayout();
+
+                try
+                {
+                    current.Controls.Add(bar);
+                    bar.BringToFront();
+                }
+                finally
+                {
+                    current.ResumeLayout(true);
+                }
+            }
+            else
+            {
+                label = bar.Controls[labelName] as Label;
+            }
+
+            if (label is null)
+            {
+                return "Zraxion Analytics Bar exists, but its label could not be found.";
+            }
+
+            GridSelectionAnalytics.NumericSelectionSummary summary;
+
+            try
+            {
+                summary = GridSelectionAnalytics.Analyze(grid);
+            }
+            catch (OverflowException)
+            {
+                label.Text =
+                    "Zraxion  |  Selected values exceed the supported decimal range.";
+
+                return "Analytics bar updated with an overflow warning.";
+            }
+            catch (InvalidOperationException ex)
+            {
+                label.Text = $"Zraxion  |  {ex.Message}";
+                return ex.Message;
+            }
+
+            var resultIndex = GetResultGridIndex(grid);
+
+            if (summary.SelectedCount == 0)
+            {
+                label.Text =
+                    $"Zraxion  |  Result {resultIndex}  |  No cells selected";
+
+                return "Analytics bar updated.";
+            }
+
+            if (summary.NumericCount == 0)
+            {
+                label.Text =
+                    $"Zraxion  |  Result {resultIndex}  |  " +
+                    $"No numeric values  |  Selected {summary.SelectedCount}";
+
+                return "Analytics bar updated.";
+            }
+
+            var averageText =
+                summary.Average.HasValue
+                    ? summary.Average.Value.ToString(
+                        "N2",
+                        CultureInfo.CurrentCulture)
+                    : "-";
+
+            label.Text =
+                $"Zraxion  |  Result {resultIndex}  |  " +
+                $"SUM {summary.Sum.ToString("N2", CultureInfo.CurrentCulture)}  |  " +
+                $"COUNT {summary.NumericCount}  |  " +
+                $"AVG {averageText}";
+
+            return
+                $"Analytics bar updated for Result {resultIndex}.";
+        }
+
+        private static int GetResultGridIndex(GridControl grid)
+        {
+            var parent = grid.Parent;
+
+            if (parent is null)
+            {
+                return 1;
+            }
+
+            var resultIndex = 0;
+
+            foreach (Control control in parent.Controls)
+            {
+                if (control is GridControl resultGrid)
+                {
+                    resultIndex++;
+
+                    if (ReferenceEquals(resultGrid, grid))
+                    {
+                        return resultIndex;
+                    }
+                }
+            }
+
+            return 1;
+        }
 
 
     }

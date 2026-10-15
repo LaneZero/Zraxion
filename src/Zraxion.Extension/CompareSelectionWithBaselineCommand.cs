@@ -61,11 +61,16 @@ namespace Zraxion.Extension
             var message =
                 ResultsGridProbe.CompareCurrentSelectionWithBaseline();
 
+            if (string.IsNullOrWhiteSpace(message))
+            {
+                return;
+            }
+
             VsShellUtilities.ShowMessageBox(
                 this.package,
                 message,
                 "Zraxion - Compare with A",
-                OLEMSGICON.OLEMSGICON_INFO,
+                OLEMSGICON.OLEMSGICON_WARNING,
                 OLEMSGBUTTON.OLEMSGBUTTON_OK,
                 OLEMSGDEFBUTTON.OLEMSGDEFBUTTON_FIRST);
         }
