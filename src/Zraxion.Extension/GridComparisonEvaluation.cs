@@ -11,11 +11,11 @@ namespace Zraxion.Extension
 
     internal sealed class GridComparisonEvaluation
     {
-        public decimal Difference { get; set; }
+        public ExactDecimal Difference { get; set; }
 
-        public decimal AbsoluteDifference { get; set; }
+        public ExactDecimal AbsoluteDifference { get; set; }
 
-        public decimal? DifferencePercent { get; set; }
+        public ExactDecimal? DifferencePercent { get; set; }
 
         public bool IsMatch { get; set; }
 

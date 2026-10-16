@@ -77,15 +77,6 @@ namespace Zraxion.Extension
                 summary =
                     GridSelectionAnalytics.Analyze(grid);
             }
-            catch (OverflowException)
-            {
-                error =
-                    $"{normalizedMetric} could not be calculated because " +
-                    "the selected numeric values exceed the supported decimal range.";
-
-                Hide();
-                return false;
-            }
             catch (InvalidOperationException ex)
             {
                 error = ex.Message;
@@ -280,15 +271,6 @@ namespace Zraxion.Extension
                         grid,
                         uiColumn);
             }
-            catch (OverflowException)
-            {
-                error =
-                    $"{normalizedMetric} could not be calculated because " +
-                    "the column's numeric values exceed the supported decimal range.";
-
-                Hide();
-                return false;
-            }
             catch (Exception ex)
                 when (ex is InvalidOperationException ||
                       ex is ArgumentOutOfRangeException)
@@ -410,7 +392,7 @@ namespace Zraxion.Extension
                 return false;
             }
 
-            decimal? value =
+            ExactDecimal? value =
                 normalizedMetric == "SUM"
                     ? summary.Sum
                     : normalizedMetric == "AVG"
@@ -428,14 +410,13 @@ namespace Zraxion.Extension
             }
 
             formattedValue =
-                value.Value.ToString(
-                    "#,##0.############################",
+                ExactDecimalFormatter.Format(
+                    value.Value,
                     CultureInfo.CurrentCulture);
 
             rawCopyValue =
-                value.Value.ToString(
-                    "G29",
-                    CultureInfo.InvariantCulture);
+                ExactDecimalFormatter.FormatInvariant(
+                    value.Value);
 
             return true;
         }

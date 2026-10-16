@@ -148,48 +148,48 @@ namespace Zraxion.Extension
                 new ToolStripMenuItem("Copy A")
                 {
                     ToolTipText =
-                        "Copy the raw SUM value stored in baseline A."
+                        "Copy the exact invariant SUM value stored in baseline A."
                 };
 
             copyBItem =
                 new ToolStripMenuItem("Copy B")
                 {
                     ToolTipText =
-                        "Copy the raw SUM value from the current comparison selection B."
+                        "Copy the exact invariant SUM value from comparison selection B."
                 };
 
             copyDifferenceItem =
                 new ToolStripMenuItem("Copy Difference")
                 {
                     ToolTipText =
-                        "Copy the raw difference using B - A."
+                        "Copy the exact invariant difference using B - A."
                 };
 
             copyDifferencePercentItem =
                 new ToolStripMenuItem("Copy Difference %")
                 {
                     ToolTipText =
-                        "Copy the comparison percentage difference without display formatting."
+                        "Copy the invariant percentage difference without display formatting."
                 };
 
             copySummaryItem =
                 new ToolStripMenuItem("Copy Summary")
                 {
                     ToolTipText =
-                        "Copy the full Baseline or Compare summary as displayed."
+                        "Copy an exact invariant Baseline or Compare summary."
                 };
 
             copyAItem.Click +=
-                (_, __) => CopyComparisonValue("A");
+                (_, __) => CopyComparisonValueAfterMenuCloses("A");
 
             copyBItem.Click +=
-                (_, __) => CopyComparisonValue("B");
+                (_, __) => CopyComparisonValueAfterMenuCloses("B");
 
             copyDifferenceItem.Click +=
-                (_, __) => CopyComparisonValue("DIFF");
+                (_, __) => CopyComparisonValueAfterMenuCloses("DIFF");
 
             copyDifferencePercentItem.Click +=
-                (_, __) => CopyComparisonValue("PERCENT");
+                (_, __) => CopyComparisonValueAfterMenuCloses("PERCENT");
 
             copySummaryItem.Click +=
                 (_, __) => CopySummaryAfterMenuCloses();
@@ -1089,31 +1089,51 @@ namespace Zraxion.Extension
             };
         }
 
-        private static string FormatSignedNumber(decimal value)
+        private static string FormatSignedNumber(
+            ExactDecimal value)
         {
-            if (value > 0)
+            if (value.Sign > 0)
             {
-                return "+" + FormatNumber(value);
+                return
+                    "+" +
+                    FormatNumber(
+                        value);
             }
 
-            return FormatNumber(value);
+            return
+                FormatNumber(
+                    value);
         }
 
-        private static string FormatSignedPercent(decimal value)
+        private static string FormatSignedPercent(
+            ExactDecimal value)
         {
-            var formatted = value.ToString(
-                "0.####",
-                CultureInfo.CurrentCulture) + "%";
+            var formatted =
+                ExactDecimalFormatter.Format(
+                    value,
+                    CultureInfo.CurrentCulture) +
+                "%";
 
-            return value > 0
-                ? "+" + formatted
-                : formatted;
+            return
+                value.Sign > 0
+                    ? "+" + formatted
+                    : formatted;
         }
 
-        private static string FormatNumber(decimal value)
+        private static string FormatNumber(
+            ExactDecimal value)
+        {
+            return
+                ExactDecimalFormatter.Format(
+                    value,
+                    CultureInfo.CurrentCulture);
+        }
+
+        private static string FormatNumber(
+            decimal value)
         {
             return value.ToString(
-                "#,##0.##",
+                "#,##0.############################",
                 CultureInfo.CurrentCulture);
         }
 
@@ -1252,7 +1272,7 @@ namespace Zraxion.Extension
         private void CopySummaryAfterMenuCloses()
         {
             var summary =
-                compareLabel.Text;
+                BuildExactCopySummary();
 
             if (string.IsNullOrWhiteSpace(
                     summary))
@@ -1260,9 +1280,151 @@ namespace Zraxion.Extension
                 return;
             }
 
-            // SSMS/WinForms can still be finishing the ContextMenuStrip click
-            // transaction when the first clipboard write is attempted.
-            // Queue the copy to the next UI turn so the menu has fully closed.
+            CopyTextAfterMenuCloses(
+                summary);
+        }
+
+        private string BuildExactCopySummary()
+        {
+            if (comparisonMode &&
+                lastComparison is not null)
+            {
+                var percent =
+                    lastComparison
+                        .DifferencePercent
+                        .HasValue
+                        ? ExactDecimalFormatter
+                            .FormatInvariant(
+                                lastComparison
+                                    .DifferencePercent
+                                    .Value)
+                        : "N/A";
+
+                var status =
+                    lastComparison.IsMatch
+                        ? "MATCH"
+                        : "MISMATCH";
+
+                return
+                    "COMPARE" +
+                    " | A=" +
+                    ExactDecimalFormatter
+                        .FormatInvariant(
+                            lastComparison.Left.Sum) +
+                    " | B=" +
+                    ExactDecimalFormatter
+                        .FormatInvariant(
+                            lastComparison.Right.Sum) +
+                    " | Difference=" +
+                    ExactDecimalFormatter
+                        .FormatInvariant(
+                            lastComparison.Difference) +
+                    " | DifferencePercent=" +
+                    percent +
+                    " | Tolerance=" +
+                    FormatToleranceInvariant(
+                        lastComparison.TolerancePolicy) +
+                    " | Status=" +
+                    status +
+                    " | Reason=" +
+                    FormatMatchReason(
+                        lastComparison.MatchReason);
+            }
+
+            if (baselineMode &&
+                lastBaseline is not null)
+            {
+                return
+                    "BASELINE A" +
+                    " | SUM=" +
+                    ExactDecimalFormatter
+                        .FormatInvariant(
+                            lastBaseline.Sum) +
+                    " | COUNT=" +
+                    lastBaseline.NumericCount
+                        .ToString(
+                            CultureInfo.InvariantCulture);
+            }
+
+            return
+                compareLabel.Text;
+        }
+
+        private static string FormatToleranceInvariant(
+            GridComparisonTolerancePolicy tolerancePolicy)
+        {
+            if (tolerancePolicy.IsExact)
+            {
+                return "EXACT";
+            }
+
+            var absolute =
+                tolerancePolicy.AbsoluteTolerance;
+
+            var percentage =
+                tolerancePolicy.PercentageTolerance;
+
+            if (absolute.HasValue &&
+                percentage.HasValue)
+            {
+                return
+                    "±" +
+                    absolute.Value.ToString(
+                        "G29",
+                        CultureInfo.InvariantCulture) +
+                    " OR ±" +
+                    percentage.Value.ToString(
+                        "G29",
+                        CultureInfo.InvariantCulture) +
+                    "%";
+            }
+
+            if (absolute.HasValue)
+            {
+                return
+                    "±" +
+                    absolute.Value.ToString(
+                        "G29",
+                        CultureInfo.InvariantCulture);
+            }
+
+            return
+                "±" +
+                percentage!.Value.ToString(
+                    "G29",
+                    CultureInfo.InvariantCulture) +
+                "%";
+        }
+
+        private void CopyComparisonValueAfterMenuCloses(
+            string valueKind)
+        {
+            var value =
+                GetComparisonCopyValue(
+                    valueKind);
+
+            if (string.IsNullOrEmpty(
+                    value))
+            {
+                return;
+            }
+
+            CopyTextAfterMenuCloses(
+                value);
+        }
+
+        private void CopyTextAfterMenuCloses(
+            string? text)
+        {
+            if (string.IsNullOrEmpty(
+                    text))
+            {
+                return;
+            }
+
+            // ContextMenuStrip can still own the clipboard/UI transaction on
+            // the click that closes it. Queue every comparison copy to the next
+            // UI turn, not just Copy Summary.
             if (IsHandleCreated &&
                 !IsDisposed)
             {
@@ -1275,7 +1437,7 @@ namespace Zraxion.Extension
                                 if (!IsDisposed)
                                 {
                                     TryCopyToClipboard(
-                                        summary);
+                                        text);
                                 }
                             }));
 
@@ -1288,11 +1450,11 @@ namespace Zraxion.Extension
             }
 
             TryCopyToClipboard(
-                summary);
+                text);
         }
 
 
-        private void CopyComparisonValue(
+        private string? GetComparisonCopyValue(
             string valueKind)
         {
             var normalizedKind =
@@ -1311,9 +1473,8 @@ namespace Zraxion.Extension
                 if (baseline is not null)
                 {
                     value =
-                        baseline.Sum.ToString(
-                            "G29",
-                            CultureInfo.InvariantCulture);
+                        ExactDecimalFormatter.FormatInvariant(
+                            baseline.Sum);
                 }
             }
             else if (
@@ -1324,38 +1485,31 @@ namespace Zraxion.Extension
                 {
                     case "B":
                         value =
-                            lastComparison.Right.Sum.ToString(
-                                "G29",
-                                CultureInfo.InvariantCulture);
+                            ExactDecimalFormatter.FormatInvariant(
+                                lastComparison.Right.Sum);
                         break;
 
                     case "DIFF":
                         value =
-                            lastComparison.Difference.ToString(
-                                "G29",
-                                CultureInfo.InvariantCulture);
+                            ExactDecimalFormatter.FormatInvariant(
+                                lastComparison.Difference);
                         break;
 
                     case "PERCENT":
                         if (lastComparison.DifferencePercent.HasValue)
                         {
                             value =
-                                lastComparison
-                                    .DifferencePercent
-                                    .Value
-                                    .ToString(
-                                        "G29",
-                                        CultureInfo.InvariantCulture);
+                                ExactDecimalFormatter.FormatInvariant(
+                                    lastComparison
+                                        .DifferencePercent
+                                        .Value);
                         }
 
                         break;
                 }
             }
 
-            if (!string.IsNullOrEmpty(value))
-            {
-                TryCopyToClipboard(value);
-            }
+            return value;
         }
 
         private static bool TryCopyToClipboard(

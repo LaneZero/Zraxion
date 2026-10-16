@@ -8,11 +8,11 @@ namespace Zraxion.Extension
     {
         internal sealed class NumericSelectionSummary
         {
-            public decimal Sum { get; set; }
+            public ExactDecimal Sum { get; set; } = ExactDecimal.Zero;
 
-            public decimal? Min { get; set; }
+            public ExactDecimal? Min { get; set; }
 
-            public decimal? Max { get; set; }
+            public ExactDecimal? Max { get; set; }
 
             public long SelectedCount { get; set; }
 
@@ -22,10 +22,12 @@ namespace Zraxion.Extension
 
             public long NonNumericCount { get; set; }
 
-            public decimal? Average =>
+            public ExactDecimal? Average =>
                 NumericCount > 0
-                    ? Sum / NumericCount
-                    : null;
+                    ? Sum.Divide(
+                        NumericCount,
+                        maxFractionalDigits: 38)
+                    : (ExactDecimal?)null;
         }
 
         public static NumericSelectionSummary Analyze(
@@ -173,24 +175,12 @@ namespace Zraxion.Extension
                 return;
             }
 
-            var styles =
-                NumberStyles.Number |
-                NumberStyles.AllowExponent |
-                NumberStyles.AllowCurrencySymbol;
-
-            decimal value;
+            ExactDecimal value;
 
             var parsed =
-                decimal.TryParse(
+                ExactDecimal.TryParseGridValue(
                     normalizedValue,
-                    styles,
                     CultureInfo.CurrentCulture,
-                    out value)
-                ||
-                decimal.TryParse(
-                    normalizedValue,
-                    styles,
-                    CultureInfo.InvariantCulture,
                     out value);
 
             if (!parsed)
@@ -199,10 +189,9 @@ namespace Zraxion.Extension
                 return;
             }
 
-            checked
-            {
-                result.Sum += value;
-            }
+            result.Sum =
+                result.Sum +
+                value;
 
             if (!result.Min.HasValue ||
                 value < result.Min.Value)

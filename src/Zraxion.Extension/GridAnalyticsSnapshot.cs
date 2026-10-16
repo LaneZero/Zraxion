@@ -6,13 +6,13 @@ namespace Zraxion.Extension
     {
         public string Label { get; set; } = string.Empty;
 
-        public decimal Sum { get; set; }
+        public ExactDecimal Sum { get; set; } = ExactDecimal.Zero;
 
-        public decimal? Average { get; set; }
+        public ExactDecimal? Average { get; set; }
 
-        public decimal? Min { get; set; }
+        public ExactDecimal? Min { get; set; }
 
-        public decimal? Max { get; set; }
+        public ExactDecimal? Max { get; set; }
 
         public long NumericCount { get; set; }
 

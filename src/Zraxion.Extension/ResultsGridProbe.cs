@@ -947,7 +947,7 @@ public static string InspectResultsPaneChildren()
             }
 
             return
-                $"SUM = {summary.Sum.ToString("G29", CultureInfo.CurrentCulture)}\n\n" +
+                $"SUM = {ExactDecimalFormatter.Format(summary.Sum, CultureInfo.CurrentCulture)}\n\n" +
                 $"Numeric cells: {summary.NumericCount}\n" +
                 $"Selected cells: {summary.SelectedCount}\n" +
                 $"NULL / Empty: {summary.NullOrEmptyCount}\n" +
@@ -985,7 +985,7 @@ public static string InspectResultsPaneChildren()
 
         private static string FormatNumericStatistic(
             string label,
-            Func<GridSelectionAnalytics.NumericSelectionSummary, decimal?> selector)
+            Func<GridSelectionAnalytics.NumericSelectionSummary, ExactDecimal?> selector)
         {
             var grid = GetFocusedResultsGrid();
 
@@ -1028,7 +1028,7 @@ public static string InspectResultsPaneChildren()
             var value = selector(summary);
 
             return
-                $"{label} = {value?.ToString("G29", CultureInfo.CurrentCulture)}\n\n" +
+                $"{label} = {(value.HasValue ? ExactDecimalFormatter.Format(value.Value, CultureInfo.CurrentCulture) : string.Empty)}\n\n" +
                 $"Numeric cells: {summary.NumericCount}\n" +
                 $"Selected cells: {summary.SelectedCount}\n" +
                 $"NULL / Empty: {summary.NullOrEmptyCount}\n" +
@@ -1211,7 +1211,7 @@ public static string InspectResultsPaneChildren()
 
             return
                 $"Comparison baseline A saved.\n\n" +
-                $"SUM = {snapshot.Sum.ToString("G29", CultureInfo.CurrentCulture)}\n" +
+                $"SUM = {ExactDecimalFormatter.Format(snapshot.Sum, CultureInfo.CurrentCulture)}\n" +
                 $"Numeric cells: {snapshot.NumericCount}\n" +
                 $"Selected cells: {snapshot.SelectedCount}";
         }
@@ -1617,14 +1617,14 @@ public static string InspectResultsPaneChildren()
 
             var averageText =
                 summary.Average.HasValue
-                    ? summary.Average.Value.ToString(
-                        "N2",
+                    ? ExactDecimalFormatter.Format(
+                        summary.Average.Value,
                         CultureInfo.CurrentCulture)
                     : "-";
 
             label.Text =
                 $"Zraxion  |  Result {resultIndex}  |  " +
-                $"SUM {summary.Sum.ToString("N2", CultureInfo.CurrentCulture)}  |  " +
+                $"SUM {ExactDecimalFormatter.Format(summary.Sum, CultureInfo.CurrentCulture)}  |  " +
                 $"COUNT {summary.NumericCount}  |  " +
                 $"AVG {averageText}";
 

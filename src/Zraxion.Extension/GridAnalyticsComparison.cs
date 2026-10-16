@@ -8,11 +8,11 @@ namespace Zraxion.Extension
 
         public GridAnalyticsSnapshot Right { get; }
 
-        public decimal Difference { get; }
+        public ExactDecimal Difference { get; }
 
-        public decimal AbsoluteDifference { get; }
+        public ExactDecimal AbsoluteDifference { get; }
 
-        public decimal? DifferencePercent { get; }
+        public ExactDecimal? DifferencePercent { get; }
 
         public bool IsMatch { get; }
 

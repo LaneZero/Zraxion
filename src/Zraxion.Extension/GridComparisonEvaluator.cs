@@ -4,6 +4,12 @@ namespace Zraxion.Extension
 {
     internal static class GridComparisonEvaluator
     {
+        // SQL Server DECIMAL/NUMERIC supports up to 38 digits of precision.
+        // A one-unit difference against a 38-digit baseline can produce a
+        // percentage as small as roughly 1E-36, so 18 fractional digits can
+        // incorrectly display/copy a non-zero difference as 0%.
+        private const int DifferencePercentFractionalDigits = 38;
+
         public static GridComparisonEvaluation Evaluate(
             GridAnalyticsSnapshot left,
             GridAnalyticsSnapshot right,
@@ -27,37 +33,30 @@ namespace Zraxion.Extension
                     nameof(tolerancePolicy));
             }
 
-            decimal difference;
-
-            checked
-            {
-                difference =
-                    right.Sum -
-                    left.Sum;
-            }
+            var difference =
+                right.Sum -
+                left.Sum;
 
             var absoluteDifference =
-                Math.Abs(difference);
+                difference.Abs();
 
-            decimal? differencePercent = null;
+            ExactDecimal? differencePercent =
+                null;
 
             // Percentage difference is undefined when A == 0.
-            // For non-zero baselines, use |A| as the denominator so the
-            // direction remains driven by B - A even when A is negative.
-            if (left.Sum != 0m)
+            // For non-zero baselines use |A|, preserving B - A direction.
+            if (!left.Sum.IsZero)
             {
-                var absoluteBaseline =
-                    Math.Abs(left.Sum);
-
-                checked
-                {
-                    differencePercent =
-                        (difference / absoluteBaseline) *
-                        100m;
-                }
+                differencePercent =
+                    difference
+                        .Divide(
+                            left.Sum.Abs(),
+                            DifferencePercentFractionalDigits)
+                        .Multiply(
+                            100);
             }
 
-            if (difference == 0m)
+            if (difference.IsZero)
             {
                 return CreateResult(
                     difference,
@@ -70,13 +69,25 @@ namespace Zraxion.Extension
             var withinAbsoluteTolerance =
                 tolerancePolicy.AbsoluteTolerance.HasValue &&
                 absoluteDifference <=
-                    tolerancePolicy.AbsoluteTolerance.Value;
+                    ExactDecimal.FromDecimal(
+                        tolerancePolicy.AbsoluteTolerance.Value);
 
+            // Evaluate the tolerance boundary without using the rounded
+            // DifferencePercent display value:
+            //
+            // |B-A| / |A| * 100 <= pctTolerance
+            // => |B-A| * 100 <= |A| * pctTolerance
             var withinPercentageTolerance =
                 tolerancePolicy.PercentageTolerance.HasValue &&
-                differencePercent.HasValue &&
-                Math.Abs(differencePercent.Value) <=
-                    tolerancePolicy.PercentageTolerance.Value;
+                !left.Sum.IsZero &&
+                absoluteDifference.Multiply(100) <=
+                    left.Sum
+                        .Abs()
+                        .Multiply(
+                            ExactDecimal.FromDecimal(
+                                tolerancePolicy
+                                    .PercentageTolerance
+                                    .Value));
 
             if (withinAbsoluteTolerance &&
                 withinPercentageTolerance)
@@ -109,11 +120,6 @@ namespace Zraxion.Extension
                     GridComparisonMatchReason.WithinPercentageTolerance);
             }
 
-            // Zero-baseline rule:
-            // - A = 0, B = 0 is already ExactMatch above.
-            // - A = 0, B != 0 has no meaningful percentage difference.
-            // - Absolute tolerance may still produce a valid match.
-            // - Percentage-only tolerance cannot match a non-zero B.
             return CreateResult(
                 difference,
                 absoluteDifference,
@@ -123,9 +129,9 @@ namespace Zraxion.Extension
         }
 
         private static GridComparisonEvaluation CreateResult(
-            decimal difference,
-            decimal absoluteDifference,
-            decimal? differencePercent,
+            ExactDecimal difference,
+            ExactDecimal absoluteDifference,
+            ExactDecimal? differencePercent,
             bool isMatch,
             GridComparisonMatchReason matchReason)
         {
