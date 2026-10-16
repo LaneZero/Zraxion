@@ -1,0 +1,24 @@
+Zraxion
+Copyright 2026 LaneZero
+
+This product is licensed under the Apache License, Version 2.0.
+See the LICENSE file included with this distribution.
+
+Zraxion name and branding
+-------------------------
+"Zraxion", the Zraxion logo, and the project's visual identity identify the
+original Zraxion project. The Apache License 2.0 does not grant trademark
+rights. Forks and derivative works may describe their origin from Zraxion as
+permitted by applicable law and the license, but should not imply endorsement
+by, sponsorship from, or official status with the original Zraxion project.
+
+Third-party acknowledgement
+---------------------------
+Zraxion acknowledges Axial SQL Tools
+(https://github.com/Axial-SQL/AxialSqlTools) as a public source of inspiration
+and precedent for practical SSMS productivity tooling and Results Grid/context
+menu integration. Zraxion is an independent implementation.
+
+Microsoft SQL Server, SQL Server Management Studio (SSMS), Visual Studio, and
+related product names are trademarks of Microsoft Corporation. Zraxion is an
+independent project and is not affiliated with or endorsed by Microsoft.

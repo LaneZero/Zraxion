@@ -6,7 +6,7 @@
   <Metadata>
     <Identity
       Id="Zraxion.SSMS22"
-      Version="0.1.0"
+      Version="1.0.0"
       Language="en-US"
       Publisher="LaneZero" />
 
@@ -49,3 +49,4 @@
   </Assets>
 
 </PackageManifest>
+

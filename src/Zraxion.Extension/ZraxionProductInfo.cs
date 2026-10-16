@@ -4,7 +4,7 @@ namespace Zraxion.Extension
 {
     internal static class ZraxionProductInfo
     {
-        internal const string Version = "0.1.0";
+        internal const string Version = "1.0.0";
         internal const string Publisher = "LaneZero";
         internal const string RepositoryUrl = "https://github.com/LaneZero/Zraxion";
         internal const string IssuesUrl = RepositoryUrl + "/issues";
@@ -15,3 +15,4 @@ namespace Zraxion.Extension
         internal const string GitHubApiLatestReleaseUrl = "https://api.github.com/repos/LaneZero/Zraxion/releases/latest";
     }
 }
+
