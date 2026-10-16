@@ -6,7 +6,11 @@ namespace Zraxion.Extension
 {
     internal static class GridAnalyticsSettingsStore
     {
-        private const string SettingsFileName = "grid-analytics.settings";
+        private const string SettingsFileName =
+            "grid-analytics.settings";
+
+        private static readonly object SyncRoot =
+            new object();
 
         private static readonly string SettingsDirectory =
             Path.Combine(
@@ -21,27 +25,38 @@ namespace Zraxion.Extension
 
         public static GridAnalyticsDisplayOptions Load()
         {
-            var options = new GridAnalyticsDisplayOptions();
+            var options =
+                new GridAnalyticsDisplayOptions();
 
-            if (!File.Exists(SettingsFilePath))
+            lock (SyncRoot)
             {
-                return options;
-            }
-
-            try
-            {
-                foreach (var line in File.ReadAllLines(SettingsFilePath))
+                if (!File.Exists(
+                        SettingsFilePath))
                 {
-                    ApplySetting(options, line);
+                    return options;
                 }
-            }
-            catch (IOException)
-            {
-                return options;
-            }
-            catch (UnauthorizedAccessException)
-            {
-                return options;
+
+                try
+                {
+                    foreach (var line in
+                             File.ReadAllLines(
+                                 SettingsFilePath))
+                    {
+                        ApplySetting(
+                            options,
+                            line);
+                    }
+                }
+                catch (IOException)
+                {
+                    return
+                        new GridAnalyticsDisplayOptions();
+                }
+                catch (UnauthorizedAccessException)
+                {
+                    return
+                        new GridAnalyticsDisplayOptions();
+                }
             }
 
             return options;
@@ -50,58 +65,79 @@ namespace Zraxion.Extension
         public static void Save(
             GridAnalyticsDisplayOptions options)
         {
-            if (options == null)
+            if (options is null)
             {
-                throw new ArgumentNullException(nameof(options));
+                throw new ArgumentNullException(
+                    nameof(options));
             }
 
-            Directory.CreateDirectory(SettingsDirectory);
+            var lines =
+                new[]
+                {
+                    FormatSetting(
+                        "ShowSum",
+                        options.ShowSum),
+                    FormatSetting(
+                        "ShowCount",
+                        options.ShowCount),
+                    FormatSetting(
+                        "ShowAverage",
+                        options.ShowAverage),
+                    FormatSetting(
+                        "ShowMin",
+                        options.ShowMin),
+                    FormatSetting(
+                        "ShowMax",
+                        options.ShowMax),
+                    FormatSetting(
+                        "ShowNullOrEmpty",
+                        options.ShowNullOrEmpty),
+                    FormatSetting(
+                        "ShowNonNumeric",
+                        options.ShowNonNumeric),
+                    FormatSetting(
+                        "AutoRefresh",
+                        options.AutoRefresh)
+                };
 
-            var lines = new[]
+            lock (SyncRoot)
             {
-                FormatSetting("ShowSum", options.ShowSum),
-                FormatSetting("ShowCount", options.ShowCount),
-                FormatSetting("ShowAverage", options.ShowAverage),
-                FormatSetting("ShowMin", options.ShowMin),
-                FormatSetting("ShowMax", options.ShowMax),
-                FormatSetting(
-                    "ShowNullOrEmpty",
-                    options.ShowNullOrEmpty),
-                FormatSetting(
-                    "ShowNonNumeric",
-                    options.ShowNonNumeric),
-                FormatSetting(
-                    "AutoRefresh",
-                    options.AutoRefresh)
-            };
-
-            File.WriteAllLines(
-                SettingsFilePath,
-                lines);
+                TryWriteAtomically(
+                    SettingsFilePath,
+                    lines);
+            }
         }
 
         private static void ApplySetting(
             GridAnalyticsDisplayOptions options,
             string line)
         {
-            if (string.IsNullOrWhiteSpace(line))
+            if (string.IsNullOrWhiteSpace(
+                    line))
             {
                 return;
             }
 
-            var separatorIndex = line.IndexOf('=');
+            var separatorIndex =
+                line.IndexOf('=');
 
             if (separatorIndex <= 0 ||
-                separatorIndex == line.Length - 1)
+                separatorIndex ==
+                line.Length - 1)
             {
                 return;
             }
 
             var name =
-                line.Substring(0, separatorIndex).Trim();
+                line.Substring(
+                        0,
+                        separatorIndex)
+                    .Trim();
 
             var valueText =
-                line.Substring(separatorIndex + 1).Trim();
+                line.Substring(
+                        separatorIndex + 1)
+                    .Trim();
 
             if (!bool.TryParse(
                     valueText,
@@ -150,11 +186,93 @@ namespace Zraxion.Extension
             string name,
             bool value)
         {
-            return string.Format(
-                CultureInfo.InvariantCulture,
-                "{0}={1}",
-                name,
-                value);
+            return
+                string.Format(
+                    CultureInfo.InvariantCulture,
+                    "{0}={1}",
+                    name,
+                    value);
+        }
+
+        private static void TryWriteAtomically(
+            string destinationPath,
+            string[] lines)
+        {
+            var temporaryPath =
+                destinationPath + ".tmp";
+
+            try
+            {
+                Directory.CreateDirectory(
+                    SettingsDirectory);
+
+                if (File.Exists(
+                        temporaryPath))
+                {
+                    File.Delete(
+                        temporaryPath);
+                }
+
+                File.WriteAllLines(
+                    temporaryPath,
+                    lines);
+
+                if (File.Exists(
+                        destinationPath))
+                {
+                    try
+                    {
+                        File.Replace(
+                            temporaryPath,
+                            destinationPath,
+                            destinationBackupFileName: null);
+
+                        return;
+                    }
+                    catch (IOException)
+                    {
+                        // Fall back for filesystems that do not support Replace.
+                    }
+                    catch (PlatformNotSupportedException)
+                    {
+                        // Fall back to overwrite below.
+                    }
+                }
+
+                File.Copy(
+                    temporaryPath,
+                    destinationPath,
+                    overwrite: true);
+
+                File.Delete(
+                    temporaryPath);
+            }
+            catch (IOException)
+            {
+                TryDeleteTemporaryFile(
+                    temporaryPath);
+            }
+            catch (UnauthorizedAccessException)
+            {
+                TryDeleteTemporaryFile(
+                    temporaryPath);
+            }
+        }
+
+        private static void TryDeleteTemporaryFile(
+            string path)
+        {
+            try
+            {
+                if (File.Exists(path))
+                {
+                    File.Delete(path);
+                }
+            }
+            catch
+            {
+                // Settings cleanup must never affect SSMS usage.
+            }
         }
     }
 }

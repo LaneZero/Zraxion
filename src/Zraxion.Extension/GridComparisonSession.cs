@@ -21,7 +21,7 @@ namespace Zraxion.Extension
             public BaselineMetadata? LeftMetadata { get; set; }
 
             public GridComparisonTolerancePolicy TolerancePolicy { get; set; } =
-                GridComparisonTolerancePolicy.Exact;
+                GridComparisonSettingsStore.LoadDefaultTolerancePolicy();
         }
 
         private static readonly ConditionalWeakTable<object, ComparisonState> states =
@@ -60,12 +60,21 @@ namespace Zraxion.Extension
         public static GridComparisonTolerancePolicy GetTolerancePolicy(
             object? context)
         {
+            if (context is null)
+            {
+                return
+                    GridComparisonSettingsStore
+                        .LoadDefaultTolerancePolicy();
+            }
+
+            // A new Results tab may ask for its tolerance before any baseline
+            // or comparison state exists. Create the per-tab state here so its
+            // initializer can load the persisted default from disk.
             return
                 GetState(
                     context,
-                    create: false)?
-                    .TolerancePolicy
-                ?? GridComparisonTolerancePolicy.Exact;
+                    create: true)!
+                    .TolerancePolicy;
         }
 
         public static void SetLeft(
@@ -129,6 +138,10 @@ namespace Zraxion.Extension
                 create: true)!
                 .TolerancePolicy =
                     tolerancePolicy;
+
+            GridComparisonSettingsStore
+                .SaveDefaultTolerancePolicy(
+                    tolerancePolicy);
         }
 
         public static void Clear(
