@@ -1192,7 +1192,19 @@ public static string InspectResultsPaneChildren()
                     ? selectedUiColumn
                     : null;
 
+            var comparisonContext =
+                GridAnalyticsBarManager
+                    .GetComparisonContextForGrid(
+                        grid);
+
+            if (comparisonContext is null)
+            {
+                return
+                    "Zraxion could not resolve the active Results tab for this baseline.";
+            }
+
             GridComparisonSession.SetLeft(
+                comparisonContext,
                 snapshot,
                 resultGridIndex,
                 baselineUiColumn);
@@ -1243,21 +1255,35 @@ public static string InspectResultsPaneChildren()
 
         public static string CompareCurrentSelectionWithBaseline()
         {
-            var baseline = GridComparisonSession.LeftSnapshot;
-
-            if (baseline is null)
-            {
-                return
-                    "No comparison baseline has been saved.\n\n" +
-                    "Select numeric cells and use 'Set Selection as A' first.";
-            }
-
             var grid = GetFocusedResultsGrid();
 
             if (grid is null)
             {
                 return "No focused SSMS Results Grid was detected.";
             }
+
+            var comparisonContext =
+                GridAnalyticsBarManager
+                    .GetComparisonContextForGrid(
+                        grid);
+
+            if (comparisonContext is null)
+            {
+                return
+                    "Zraxion could not resolve the active Results tab for comparison.";
+            }
+
+            var baseline =
+                GridComparisonSession.GetLeftSnapshot(
+                    comparisonContext);
+
+            if (baseline is null)
+            {
+                return
+                    "No comparison baseline has been saved for this Results tab.\n\n" +
+                    "Select numeric cells and use 'Set Selection as A' first.";
+            }
+
 
             GridAnalyticsSnapshot current;
 
@@ -1297,7 +1323,8 @@ public static string InspectResultsPaneChildren()
                     new GridAnalyticsComparison(
                         baseline,
                         current,
-                        GridComparisonSession.TolerancePolicy);
+                        GridComparisonSession.GetTolerancePolicy(
+                            comparisonContext));
             }
             catch (OverflowException)
             {

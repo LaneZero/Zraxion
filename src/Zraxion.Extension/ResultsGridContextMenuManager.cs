@@ -211,12 +211,11 @@ namespace Zraxion.Extension
             var toleranceButton =
                 AddSeparatorButton(
                     comparePopup,
-                    FormatToleranceMenuCaption(
-                        GridComparisonSession.TolerancePolicy),
+                    "Comparison Tolerance...",
                     OnToleranceClick);
 
             toleranceButton.TooltipText =
-                "Configure exact, absolute, percentage, or combined tolerance for A-versus-B comparison.";
+                "Configure tolerance for the active Results tab only.";
 
             AddSeparatorButton(
                 comparePopup,
@@ -471,34 +470,43 @@ namespace Zraxion.Extension
         {
             cancelDefault = true;
 
+            var comparisonContext =
+                GridAnalyticsBarManager
+                    .GetCurrentComparisonContext();
+
+            if (comparisonContext is null)
+            {
+                MessageBox.Show(
+                    "No focused SSMS Results Grid was detected.",
+                    "Zraxion - Comparison Tolerance",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning);
+
+                return;
+            }
+
+            var currentPolicy =
+                GridComparisonSession.GetTolerancePolicy(
+                    comparisonContext);
+
             if (!GridComparisonToleranceDialog.TryShow(
-                    GridComparisonSession.TolerancePolicy,
+                    currentPolicy,
                     out var tolerancePolicy))
             {
                 return;
             }
 
             GridComparisonSession.SetTolerancePolicy(
+                comparisonContext,
                 tolerancePolicy);
 
             ctrl.Caption =
-                FormatToleranceMenuCaption(
-                    tolerancePolicy);
+                "Comparison Tolerance...";
 
             ctrl.TooltipText =
-                "Current comparison tolerance: " +
+                "Current tab tolerance: " +
                 FormatToleranceDescription(
                     tolerancePolicy);
-        }
-
-        private static string FormatToleranceMenuCaption(
-            GridComparisonTolerancePolicy tolerancePolicy)
-        {
-            return
-                "Tolerance: " +
-                FormatToleranceDescription(
-                    tolerancePolicy) +
-                "...";
         }
 
         private static string FormatToleranceDescription(
@@ -538,7 +546,13 @@ namespace Zraxion.Extension
         {
             cancelDefault = true;
 
-            GridComparisonSession.Clear();
+            var comparisonContext =
+                GridAnalyticsBarManager
+                    .GetCurrentComparisonContext();
+
+            GridComparisonSession.Clear(
+                comparisonContext);
+
             GridAnalyticsBarManager.ClearComparisonView();
         }
 

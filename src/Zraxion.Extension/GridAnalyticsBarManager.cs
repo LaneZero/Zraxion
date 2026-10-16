@@ -7,45 +7,50 @@ namespace Zraxion.Extension
 {
     internal static class GridAnalyticsBarManager
     {
+        private sealed class HostState
+        {
+            public HostState(
+                Control host,
+                ZraxionAnalyticsBar bar,
+                Padding originalPadding)
+            {
+                Host = host;
+                Bar = bar;
+                OriginalPadding = originalPadding;
+            }
+
+            public Control Host { get; }
+
+            public ZraxionAnalyticsBar Bar { get; }
+
+            public Padding OriginalPadding { get; }
+
+            public GridControl? ActiveGrid { get; set; }
+
+            public bool PaddingReserved { get; set; }
+        }
+
         private static readonly HashSet<GridControl> subscribedGrids =
             new HashSet<GridControl>();
 
-        private static ZraxionAnalyticsBar? analyticsBar;
-        private static Control? analyticsHost;
-        private static GridControl? activeGrid;
+        private static readonly Dictionary<Control, HostState> hostStates =
+            new Dictionary<Control, HostState>();
 
-        private static Padding originalHostPadding;
-        private static bool hostPaddingCaptured;
+        private static HostState? activeHostState;
 
         public static void AttachToCurrentResults(
             bool showSelectionMetrics = true)
         {
-            var grid =
-                ResultsGridProbe.GetFocusedResultsGridForUi();
-
-            if (grid is null)
+            if (!TryActivateFocusedResults(
+                    out var state,
+                    out var grid))
             {
                 return;
             }
 
-            // Do not shadow the static activeGrid field.
-            // The manager must know the active grid immediately on first attach.
-            activeGrid = grid;
-
-            var host = FindResultsHost(grid);
-
-            if (host is null)
+            if (showSelectionMetrics)
             {
-                return;
-            }
-
-            EnsureAnalyticsBar(host);
-
-            if (showSelectionMetrics &&
-                analyticsBar is not null &&
-                !analyticsBar.IsDisposed)
-            {
-                analyticsBar.ShowSelectionMetricsView();
+                state.Bar.ShowSelectionMetricsView();
             }
 
             SubscribeToResultGrids(grid);
@@ -55,13 +60,58 @@ namespace Zraxion.Extension
             QueueUpdateFromGrid(grid);
         }
 
-        private static Control? FindResultsHost(GridControl grid)
+        private static bool TryActivateFocusedResults(
+            out HostState state,
+            out GridControl grid)
+        {
+            state = null!;
+            grid = null!;
+
+            var focusedGrid =
+                ResultsGridProbe.GetFocusedResultsGridForUi();
+
+            if (focusedGrid is null ||
+                focusedGrid.IsDisposed)
+            {
+                return false;
+            }
+
+            var host =
+                FindResultsHost(focusedGrid);
+
+            if (host is null ||
+                host.IsDisposed)
+            {
+                return false;
+            }
+
+            var hostState =
+                EnsureHostState(host);
+
+            hostState.ActiveGrid =
+                focusedGrid;
+
+            activeHostState =
+                hostState;
+
+            state = hostState;
+            grid = focusedGrid;
+
+            SubscribeToResultGrids(
+                focusedGrid);
+
+            return true;
+        }
+
+        private static Control? FindResultsHost(
+            GridControl grid)
         {
             Control? current = grid;
 
             while (current is not null)
             {
-                var typeName = current.GetType().FullName;
+                var typeName =
+                    current.GetType().FullName;
 
                 if (typeName ==
                     "Microsoft.SqlServer.Management.UI.VSIntegration.Editors.SqlScriptEditorControl+DisplayResultsUserControl")
@@ -75,73 +125,170 @@ namespace Zraxion.Extension
             return null;
         }
 
-        private static void EnsureAnalyticsBar(Control host)
+        internal static object? GetComparisonContextForGrid(
+            GridControl grid)
         {
-            if (ReferenceEquals(analyticsHost, host) &&
-                analyticsBar is not null &&
-                !analyticsBar.IsDisposed)
+            if (grid is null)
             {
-                PositionAnalyticsBar(host);
-                return;
+                throw new ArgumentNullException(
+                    nameof(grid));
             }
 
-            // If we previously attached to another Results host,
-            // restore its original layout first.
-            if (analyticsHost is not null &&
-                hostPaddingCaptured &&
-                !analyticsHost.IsDisposed)
+            return FindResultsHost(grid);
+        }
+
+        internal static object? GetCurrentComparisonContext()
+        {
+            var grid =
+                ResultsGridProbe.GetFocusedResultsGridForUi();
+
+            return
+                grid is null
+                    ? null
+                    : FindResultsHost(grid);
+        }
+
+        private static HostState EnsureHostState(
+            Control host)
+        {
+            if (hostStates.TryGetValue(
+                    host,
+                    out var existingState))
             {
-                analyticsHost.Padding = originalHostPadding;
+                if (!existingState.Bar.IsDisposed)
+                {
+                    PositionAnalyticsBar(
+                        existingState);
+
+                    return existingState;
+                }
+
+                hostStates.Remove(host);
             }
 
-            analyticsHost = host;
-
-            var existing =
+            var existingBar =
                 host.Controls["ZraxionAnalyticsBar"]
                     as ZraxionAnalyticsBar;
 
-            if (existing is not null)
+            var bar =
+                existingBar ??
+                new ZraxionAnalyticsBar();
+
+            if (existingBar is null)
             {
-                analyticsBar = existing;
-            }
-            else
-            {
-                analyticsBar = new ZraxionAnalyticsBar();
-                host.Controls.Add(analyticsBar);
-                analyticsBar.BringToFront();
+                host.Controls.Add(bar);
+                bar.BringToFront();
             }
 
-            analyticsBar.AutoRefreshChanged -= OnAutoRefreshChanged;
-            analyticsBar.AutoRefreshChanged += OnAutoRefreshChanged;
+            var state =
+                new HostState(
+                    host,
+                    bar,
+                    host.Padding);
 
-            analyticsBar.RefreshRequested -= OnRefreshRequested;
-            analyticsBar.RefreshRequested += OnRefreshRequested;
+            hostStates[host] =
+                state;
 
-            originalHostPadding = host.Padding;
-            hostPaddingCaptured = true;
+            bar.AutoRefreshChanged -=
+                OnAutoRefreshChanged;
+            bar.AutoRefreshChanged +=
+                OnAutoRefreshChanged;
 
-            // Reserve real space below the SSMS Results control.
-            host.Padding = new Padding(
-                originalHostPadding.Left,
-                originalHostPadding.Top,
-                originalHostPadding.Right,
-                originalHostPadding.Bottom + analyticsBar.Height);
+            bar.RefreshRequested -=
+                OnRefreshRequested;
+            bar.RefreshRequested +=
+                OnRefreshRequested;
 
-            PositionAnalyticsBar(host);
+            ReserveHostPadding(state);
 
-            host.Resize -= OnResultsHostResize;
-            host.Resize += OnResultsHostResize;
+            host.Resize -=
+                OnResultsHostResize;
+            host.Resize +=
+                OnResultsHostResize;
 
+            host.Disposed -=
+                OnResultsHostDisposed;
+            host.Disposed +=
+                OnResultsHostDisposed;
+
+            PositionAnalyticsBar(state);
             host.PerformLayout();
+
+            return state;
+        }
+
+        private static void ReserveHostPadding(
+            HostState state)
+        {
+            if (state.PaddingReserved ||
+                state.Host.IsDisposed ||
+                state.Bar.IsDisposed)
+            {
+                return;
+            }
+
+            var original =
+                state.OriginalPadding;
+
+            state.Host.Padding =
+                new Padding(
+                    original.Left,
+                    original.Top,
+                    original.Right,
+                    original.Bottom +
+                    state.Bar.Height);
+
+            state.PaddingReserved = true;
         }
 
         private static void OnResultsHostResize(
             object? sender,
             EventArgs e)
         {
-            if (sender is Control host)
+            if (sender is not Control host ||
+                !hostStates.TryGetValue(
+                    host,
+                    out var state))
             {
-                PositionAnalyticsBar(host);
+                return;
+            }
+
+            PositionAnalyticsBar(state);
+        }
+
+        private static void OnResultsHostDisposed(
+            object? sender,
+            EventArgs e)
+        {
+            if (sender is not Control host)
+            {
+                return;
+            }
+
+            host.Resize -=
+                OnResultsHostResize;
+            host.Disposed -=
+                OnResultsHostDisposed;
+
+            if (!hostStates.TryGetValue(
+                    host,
+                    out var state))
+            {
+                return;
+            }
+
+            state.Bar.AutoRefreshChanged -=
+                OnAutoRefreshChanged;
+            state.Bar.RefreshRequested -=
+                OnRefreshRequested;
+
+            hostStates.Remove(host);
+
+            if (ReferenceEquals(
+                    activeHostState,
+                    state))
+            {
+                activeHostState = null;
             }
         }
 
@@ -149,56 +296,106 @@ namespace Zraxion.Extension
             object? sender,
             EventArgs e)
         {
-            if (analyticsBar?.AutoRefreshEnabled == true &&
-                activeGrid is not null)
+            var state =
+                FindHostStateByBar(sender);
+
+            if (state is null ||
+                !state.Bar.AutoRefreshEnabled ||
+                state.ActiveGrid is null ||
+                state.ActiveGrid.IsDisposed)
             {
-                UpdateFromGrid(activeGrid);
+                return;
             }
+
+            UpdateFromGrid(
+                state,
+                state.ActiveGrid);
         }
 
         private static void OnRefreshRequested(
             object? sender,
             EventArgs e)
         {
-            if (activeGrid is not null)
-            {
-                UpdateFromGrid(activeGrid);
-            }
-        }
+            var state =
+                FindHostStateByBar(sender);
 
-        private static void PositionAnalyticsBar(Control host)
-        {
-            if (analyticsBar is null ||
-                analyticsBar.IsDisposed)
+            if (state?.ActiveGrid is null ||
+                state.ActiveGrid.IsDisposed)
             {
                 return;
             }
 
-            var left = originalHostPadding.Left;
+            UpdateFromGrid(
+                state,
+                state.ActiveGrid);
+        }
+
+        private static HostState? FindHostStateByBar(
+            object? sender)
+        {
+            if (sender is not ZraxionAnalyticsBar bar)
+            {
+                return null;
+            }
+
+            foreach (var state in hostStates.Values)
+            {
+                if (ReferenceEquals(
+                        state.Bar,
+                        bar))
+                {
+                    return state;
+                }
+            }
+
+            return null;
+        }
+
+        private static void PositionAnalyticsBar(
+            HostState state)
+        {
+            var host =
+                state.Host;
+
+            var bar =
+                state.Bar;
+
+            if (host.IsDisposed ||
+                bar.IsDisposed)
+            {
+                return;
+            }
+
+            var original =
+                state.OriginalPadding;
+
+            var left =
+                original.Left;
 
             var width =
                 host.ClientSize.Width -
-                originalHostPadding.Left -
-                originalHostPadding.Right;
+                original.Left -
+                original.Right;
 
             var top =
                 host.ClientSize.Height -
-                originalHostPadding.Bottom -
-                analyticsBar.Height;
+                original.Bottom -
+                bar.Height;
 
-            analyticsBar.SetBounds(
+            bar.SetBounds(
                 left,
                 top,
                 Math.Max(0, width),
-                analyticsBar.Height);
+                bar.Height);
 
-            analyticsBar.BringToFront();
+            bar.BringToFront();
         }
 
         private static void SubscribeToResultGrids(
             GridControl activeGrid)
         {
-            var smartPanel = activeGrid.Parent;
+            var smartPanel =
+                activeGrid.Parent;
 
             if (smartPanel is null)
             {
@@ -215,32 +412,57 @@ namespace Zraxion.Extension
             }
         }
 
-        private static void Subscribe(GridControl grid)
+        private static void Subscribe(
+            GridControl grid)
         {
             if (!subscribedGrids.Add(grid))
             {
                 return;
             }
 
-            grid.SelectionChanged += OnGridSelectionChanged;
-            grid.GotFocus += OnGridGotFocus;
-            grid.Disposed += OnGridDisposed;
+            grid.SelectionChanged +=
+                OnGridSelectionChanged;
+            grid.GotFocus +=
+                OnGridGotFocus;
+            grid.Disposed +=
+                OnGridDisposed;
         }
 
         private static void OnGridSelectionChanged(
             object sender,
             EventArgs e)
         {
-            if (sender is not GridControl grid)
+            if (sender is not GridControl grid ||
+                grid.IsDisposed)
             {
                 return;
             }
 
-            activeGrid = grid;
+            var state =
+                TryGetHostStateForGrid(grid);
 
-            if (analyticsBar?.AutoRefreshEnabled == true)
+            if (state is null)
             {
-                UpdateFromGrid(grid);
+                return;
+            }
+
+            state.ActiveGrid =
+                grid;
+
+            // A SelectionChanged event from a hidden/inactive Results host must
+            // never steal the active host from the tab the user is working in.
+            if (grid.Focused ||
+                grid.ContainsFocus)
+            {
+                activeHostState =
+                    state;
+            }
+
+            if (state.Bar.AutoRefreshEnabled)
+            {
+                UpdateFromGrid(
+                    state,
+                    grid);
             }
         }
 
@@ -248,17 +470,62 @@ namespace Zraxion.Extension
             object? sender,
             EventArgs e)
         {
-            if (sender is not GridControl grid)
+            if (sender is not GridControl grid ||
+                grid.IsDisposed)
             {
                 return;
             }
 
-            activeGrid = grid;
+            var host =
+                FindResultsHost(grid);
 
-            if (analyticsBar?.AutoRefreshEnabled == true)
+            if (host is null ||
+                host.IsDisposed)
             {
-                UpdateFromGrid(grid);
+                return;
             }
+
+            var state =
+                EnsureHostState(host);
+
+            state.ActiveGrid =
+                grid;
+
+            activeHostState =
+                state;
+
+            SubscribeToResultGrids(grid);
+
+            if (state.Bar.AutoRefreshEnabled)
+            {
+                UpdateFromGrid(
+                    state,
+                    grid);
+            }
+            else
+            {
+                PositionAnalyticsBar(state);
+            }
+        }
+
+        private static HostState? TryGetHostStateForGrid(
+            GridControl grid)
+        {
+            var host =
+                FindResultsHost(grid);
+
+            if (host is null ||
+                host.IsDisposed)
+            {
+                return null;
+            }
+
+            return
+                hostStates.TryGetValue(
+                    host,
+                    out var state)
+                    ? state
+                    : null;
         }
 
         private static void OnGridDisposed(
@@ -270,27 +537,47 @@ namespace Zraxion.Extension
                 return;
             }
 
-            grid.SelectionChanged -= OnGridSelectionChanged;
-            grid.GotFocus -= OnGridGotFocus;
-            grid.Disposed -= OnGridDisposed;
+            grid.SelectionChanged -=
+                OnGridSelectionChanged;
+            grid.GotFocus -=
+                OnGridGotFocus;
+            grid.Disposed -=
+                OnGridDisposed;
 
             subscribedGrids.Remove(grid);
 
-            if (ReferenceEquals(activeGrid, grid))
+            foreach (var state in hostStates.Values)
             {
-                activeGrid = null;
+                if (ReferenceEquals(
+                        state.ActiveGrid,
+                        grid))
+                {
+                    state.ActiveGrid = null;
+                }
             }
         }
 
-        private static void QueueUpdateFromGrid(GridControl grid)
+        private static void QueueUpdateFromGrid(
+            GridControl grid)
         {
-            var host = analyticsHost;
+            var state =
+                TryGetHostStateForGrid(grid);
 
-            if (host is null ||
-                host.IsDisposed ||
+            if (state is null)
+            {
+                return;
+            }
+
+            var host =
+                state.Host;
+
+            if (host.IsDisposed ||
                 !host.IsHandleCreated)
             {
-                UpdateFromGrid(grid);
+                UpdateFromGrid(
+                    state,
+                    grid);
+
                 return;
             }
 
@@ -301,56 +588,67 @@ namespace Zraxion.Extension
                         () =>
                         {
                             if (host.IsDisposed ||
-                                grid.IsDisposed)
+                                grid.IsDisposed ||
+                                state.Bar.IsDisposed)
                             {
                                 return;
                             }
 
                             host.PerformLayout();
-                            PositionAnalyticsBar(host);
-                            UpdateFromGrid(grid);
+                            PositionAnalyticsBar(state);
+                            UpdateFromGrid(
+                                state,
+                                grid);
                         }));
             }
             catch (InvalidOperationException)
             {
                 // The host can be rebuilding while a query/results pane changes.
-                // Fall back to an immediate refresh rather than losing the bar.
                 if (!grid.IsDisposed)
                 {
-                    UpdateFromGrid(grid);
+                    UpdateFromGrid(
+                        state,
+                        grid);
                 }
             }
         }
 
-        private static void UpdateFromGrid(GridControl grid)
+        private static void UpdateFromGrid(
+            HostState state,
+            GridControl grid)
         {
-            activeGrid = grid;
-
-            if (analyticsBar is null ||
-                analyticsBar.IsDisposed)
+            if (grid.IsDisposed ||
+                state.Host.IsDisposed ||
+                state.Bar.IsDisposed)
             {
                 return;
             }
 
+            state.ActiveGrid =
+                grid;
+
             try
             {
                 var summary =
-                    GridSelectionAnalytics.Analyze(grid);
+                    GridSelectionAnalytics.Analyze(
+                        grid);
 
                 var resultIndex =
-                    ResultsGridProbe.GetResultGridIndexForUi(grid);
+                    ResultsGridProbe
+                        .GetResultGridIndexForUi(
+                            grid);
 
-                analyticsBar.UpdateAnalytics(
+                state.Bar.UpdateAnalytics(
                     resultIndex,
                     summary);
             }
             catch (OverflowException)
             {
-                analyticsBar.Reset();
+                state.Bar.Reset();
             }
             catch (InvalidOperationException)
             {
-                analyticsBar.Reset();
+                state.Bar.Reset();
             }
         }
 
@@ -364,58 +662,52 @@ namespace Zraxion.Extension
                     nameof(metric));
             }
 
-            AttachToCurrentResults(
-                showSelectionMetrics: false);
-
-            var bar = analyticsBar;
-
-            if (bar is null ||
-                bar.IsDisposed)
+            if (!TryActivateFocusedResults(
+                    out var state,
+                    out var grid))
             {
                 return;
             }
 
-            bar.ShowSelectionMetricView(metric);
+            UpdateFromGrid(
+                state,
+                grid);
 
-            if (analyticsHost is not null &&
-                !analyticsHost.IsDisposed)
-            {
-                PositionAnalyticsBar(analyticsHost);
-            }
+            state.Bar.ShowSelectionMetricView(
+                metric);
+
+            PositionAnalyticsBar(state);
         }
 
         internal static void ShowBaseline()
         {
+            if (!TryActivateFocusedResults(
+                    out var state,
+                    out _))
+            {
+                return;
+            }
+
             var baseline =
-                GridComparisonSession.LeftSnapshot;
+                GridComparisonSession.GetLeftSnapshot(
+                    state.Host);
 
             if (baseline is null)
             {
                 return;
             }
 
-            if (analyticsBar is null ||
-                analyticsBar.IsDisposed)
-            {
-                AttachToCurrentResults(
-                    showSelectionMetrics: false);
-            }
-
-            var bar = analyticsBar;
-            var host = analyticsHost;
-
-            if (bar is null ||
-                bar.IsDisposed)
-            {
-                return;
-            }
-
             var metadata =
-                GridComparisonSession.LeftMetadata;
+                GridComparisonSession.GetLeftMetadata(
+                    state.Host);
 
-            if (host is not null &&
-                !host.IsDisposed &&
-                host.IsHandleCreated)
+            var host =
+                state.Host;
+
+            var bar =
+                state.Bar;
+
+            if (host.IsHandleCreated)
             {
                 try
                 {
@@ -423,7 +715,8 @@ namespace Zraxion.Extension
                         new Action(
                             () =>
                             {
-                                if (bar.IsDisposed)
+                                if (host.IsDisposed ||
+                                    bar.IsDisposed)
                                 {
                                     return;
                                 }
@@ -432,7 +725,8 @@ namespace Zraxion.Extension
                                     baseline,
                                     metadata);
 
-                                PositionAnalyticsBar(host);
+                                PositionAnalyticsBar(
+                                    state);
                             }));
 
                     return;
@@ -446,56 +740,48 @@ namespace Zraxion.Extension
             bar.ShowBaseline(
                 baseline,
                 metadata);
+
+            PositionAnalyticsBar(state);
         }
 
         internal static void ClearComparisonView()
         {
-            var bar = analyticsBar;
-
-            if (bar is null ||
-                bar.IsDisposed)
+            if (!TryActivateFocusedResults(
+                    out var state,
+                    out _))
             {
                 return;
             }
 
-            // Clearing comparison state should leave the bar visually empty.
-            // Do not immediately repopulate it from the active selection.
-            bar.ClearComparison();
+            state.Bar.ClearComparison();
+            PositionAnalyticsBar(state);
         }
 
         internal static void ShowComparison(
             GridAnalyticsComparison comparison)
         {
-            if (comparison == null)
+            if (comparison is null)
             {
                 throw new ArgumentNullException(
                     nameof(comparison));
             }
 
-            // Compare must work even when the user has never invoked
-            // "Inspect Results Grid". Attach the bar on demand.
-            if (analyticsBar is null ||
-                analyticsBar.IsDisposed)
-            {
-                AttachToCurrentResults(
-                    showSelectionMetrics: false);
-            }
-
-            var bar = analyticsBar;
-            var host = analyticsHost;
-
-            if (bar is null ||
-                bar.IsDisposed)
+            if (!TryActivateFocusedResults(
+                    out var state,
+                    out _))
             {
                 return;
             }
 
-            // If AttachToCurrentResults just queued the first analytics refresh,
-            // queue Compare after it. This prevents that refresh from immediately
-            // hiding the comparison and also lets the first layout finish.
-            if (host is not null &&
-                !host.IsDisposed &&
-                host.IsHandleCreated)
+            var host =
+                state.Host;
+
+            var bar =
+                state.Bar;
+
+            // Queue Compare after host activation/layout so a deferred selection
+            // refresh cannot overwrite the comparison view.
+            if (host.IsHandleCreated)
             {
                 try
                 {
@@ -503,13 +789,17 @@ namespace Zraxion.Extension
                         new Action(
                             () =>
                             {
-                                if (bar.IsDisposed)
+                                if (host.IsDisposed ||
+                                    bar.IsDisposed)
                                 {
                                     return;
                                 }
 
-                                bar.ShowComparison(comparison);
-                                PositionAnalyticsBar(host);
+                                bar.ShowComparison(
+                                    comparison);
+
+                                PositionAnalyticsBar(
+                                    state);
                             }));
 
                     return;
@@ -520,7 +810,10 @@ namespace Zraxion.Extension
                 }
             }
 
-            bar.ShowComparison(comparison);
+            bar.ShowComparison(
+                comparison);
+
+            PositionAnalyticsBar(state);
         }
     }
 }

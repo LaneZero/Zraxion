@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Runtime.CompilerServices;
 
 namespace Zraxion.Extension
 {
@@ -13,73 +14,166 @@ namespace Zraxion.Extension
             public DateTime CapturedAtUtc { get; set; }
         }
 
-        public static GridAnalyticsSnapshot? LeftSnapshot
+        private sealed class ComparisonState
         {
-            get;
-            private set;
+            public GridAnalyticsSnapshot? LeftSnapshot { get; set; }
+
+            public BaselineMetadata? LeftMetadata { get; set; }
+
+            public GridComparisonTolerancePolicy TolerancePolicy { get; set; } =
+                GridComparisonTolerancePolicy.Exact;
         }
 
-        public static BaselineMetadata? LeftMetadata
+        private static readonly ConditionalWeakTable<object, ComparisonState> states =
+            new ConditionalWeakTable<object, ComparisonState>();
+
+        public static bool HasBaseline(
+            object? context)
         {
-            get;
-            private set;
+            return
+                GetState(
+                    context,
+                    create: false)?
+                    .LeftSnapshot is not null;
         }
 
-        public static bool HasBaseline =>
-            LeftSnapshot is not null;
-
-        public static GridComparisonTolerancePolicy TolerancePolicy
+        public static GridAnalyticsSnapshot? GetLeftSnapshot(
+            object? context)
         {
-            get;
-            private set;
-        } = GridComparisonTolerancePolicy.Exact;
+            return
+                GetState(
+                    context,
+                    create: false)?
+                    .LeftSnapshot;
+        }
+
+        public static BaselineMetadata? GetLeftMetadata(
+            object? context)
+        {
+            return
+                GetState(
+                    context,
+                    create: false)?
+                    .LeftMetadata;
+        }
+
+        public static GridComparisonTolerancePolicy GetTolerancePolicy(
+            object? context)
+        {
+            return
+                GetState(
+                    context,
+                    create: false)?
+                    .TolerancePolicy
+                ?? GridComparisonTolerancePolicy.Exact;
+        }
 
         public static void SetLeft(
-            GridAnalyticsSnapshot snapshot)
-        {
-            SetLeft(
-                snapshot,
-                resultGridIndex: -1,
-                uiColumnIndex: null);
-        }
-
-        public static void SetLeft(
+            object context,
             GridAnalyticsSnapshot snapshot,
             int resultGridIndex,
             int? uiColumnIndex)
         {
+            if (context is null)
+            {
+                throw new ArgumentNullException(
+                    nameof(context));
+            }
+
             if (snapshot is null)
             {
                 throw new ArgumentNullException(
                     nameof(snapshot));
             }
 
-            // Commit snapshot + metadata together so a failed replacement can
-            // never leave the comparison session half-updated.
-            LeftSnapshot = snapshot;
+            var state =
+                GetState(
+                    context,
+                    create: true)!;
 
-            LeftMetadata =
+            // Commit snapshot + metadata together so a failed replacement can
+            // never leave this Results host half-updated.
+            state.LeftSnapshot =
+                snapshot;
+
+            state.LeftMetadata =
                 new BaselineMetadata
                 {
-                    ResultGridIndex = resultGridIndex,
-                    UiColumnIndex = uiColumnIndex,
-                    CapturedAtUtc = snapshot.CapturedAtUtc
+                    ResultGridIndex =
+                        resultGridIndex,
+                    UiColumnIndex =
+                        uiColumnIndex,
+                    CapturedAtUtc =
+                        snapshot.CapturedAtUtc
                 };
         }
 
         public static void SetTolerancePolicy(
+            object context,
             GridComparisonTolerancePolicy tolerancePolicy)
         {
-            TolerancePolicy =
-                tolerancePolicy ??
+            if (context is null)
+            {
+                throw new ArgumentNullException(
+                    nameof(context));
+            }
+
+            if (tolerancePolicy is null)
+            {
                 throw new ArgumentNullException(
                     nameof(tolerancePolicy));
+            }
+
+            GetState(
+                context,
+                create: true)!
+                .TolerancePolicy =
+                    tolerancePolicy;
         }
 
-        public static void Clear()
+        public static void Clear(
+            object? context)
         {
-            LeftSnapshot = null;
-            LeftMetadata = null;
+            var state =
+                GetState(
+                    context,
+                    create: false);
+
+            if (state is null)
+            {
+                return;
+            }
+
+            // Clearing A/Compare intentionally preserves this host's tolerance.
+            state.LeftSnapshot = null;
+            state.LeftMetadata = null;
+        }
+
+        private static ComparisonState? GetState(
+            object? context,
+            bool create)
+        {
+            if (context is null)
+            {
+                return null;
+            }
+
+            if (states.TryGetValue(
+                    context,
+                    out var existing))
+            {
+                return existing;
+            }
+
+            if (!create)
+            {
+                return null;
+            }
+
+            return
+                states.GetValue(
+                    context,
+                    _ => new ComparisonState());
         }
     }
 }
