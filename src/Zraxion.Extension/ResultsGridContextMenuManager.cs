@@ -80,6 +80,7 @@ namespace Zraxion.Extension
             popups.Add(zraxionPopup);
 
             AddSelectionAnalyticsMenu(zraxionPopup);
+            AddColumnAnalyticsMenu(zraxionPopup);
             AddCompareMenu(zraxionPopup);
 
             AddSeparatorButton(
@@ -100,9 +101,13 @@ namespace Zraxion.Extension
                     Type.Missing,
                     Type.Missing,
                     true)
-                as CommandBarPopup
-                ?? throw new InvalidOperationException(
+                as CommandBarPopup;
+
+            if (analyticsPopup is null)
+            {
+                throw new InvalidOperationException(
                     "Zraxion could not create the Selection Analytics menu.");
+            }
 
             analyticsPopup.Caption = "Selection Analytics";
             analyticsPopup.Visible = true;
@@ -117,6 +122,57 @@ namespace Zraxion.Extension
             AddButton(analyticsPopup, "MAX", OnMaxClick);
         }
 
+        private static void AddColumnAnalyticsMenu(
+            CommandBarPopup parent)
+        {
+            var columnPopup =
+                parent.Controls.Add(
+                    MsoControlType.msoControlPopup,
+                    Type.Missing,
+                    Type.Missing,
+                    Type.Missing,
+                    true)
+                as CommandBarPopup;
+
+            if (columnPopup is null)
+            {
+                throw new InvalidOperationException(
+                    "Zraxion could not create the Column Analytics menu.");
+            }
+
+            columnPopup.Caption = "Column Analytics";
+            columnPopup.Visible = true;
+            columnPopup.Enabled = true;
+            columnPopup.BeginGroup = true;
+
+            popups.Add(columnPopup);
+
+            AddButton(
+                columnPopup,
+                "SUM",
+                OnColumnSumClick);
+
+            AddButton(
+                columnPopup,
+                "AVG",
+                OnColumnAverageClick);
+
+            AddButton(
+                columnPopup,
+                "COUNT",
+                OnColumnCountClick);
+
+            AddButton(
+                columnPopup,
+                "MIN",
+                OnColumnMinClick);
+
+            AddButton(
+                columnPopup,
+                "MAX",
+                OnColumnMaxClick);
+        }
+
         private static void AddCompareMenu(
             CommandBarPopup parent)
         {
@@ -127,9 +183,13 @@ namespace Zraxion.Extension
                     Type.Missing,
                     Type.Missing,
                     true)
-                as CommandBarPopup
-                ?? throw new InvalidOperationException(
+                as CommandBarPopup;
+
+            if (comparePopup is null)
+            {
+                throw new InvalidOperationException(
                     "Zraxion could not create the Compare menu.");
+            }
 
             comparePopup.Caption = "Compare";
             comparePopup.Visible = true;
@@ -208,9 +268,13 @@ namespace Zraxion.Extension
                     Type.Missing,
                     Type.Missing,
                     true)
-                as CommandBarButton
-                ?? throw new InvalidOperationException(
+                as CommandBarButton;
+
+            if (button is null)
+            {
+                throw new InvalidOperationException(
                     $"Zraxion could not create '{caption}'.");
+            }
 
             button.Caption = caption;
             button.Visible = true;
@@ -228,7 +292,7 @@ namespace Zraxion.Extension
             ref bool cancelDefault)
         {
             cancelDefault = true;
-            GridAnalyticsBarManager.ShowSelectionMetric("SUM");
+            ShowSelectionMetricFooter("SUM");
         }
 
         private static void OnAverageClick(
@@ -236,7 +300,7 @@ namespace Zraxion.Extension
             ref bool cancelDefault)
         {
             cancelDefault = true;
-            GridAnalyticsBarManager.ShowSelectionMetric("AVG");
+            ShowSelectionMetricFooter("AVG");
         }
 
         private static void OnCountClick(
@@ -244,7 +308,7 @@ namespace Zraxion.Extension
             ref bool cancelDefault)
         {
             cancelDefault = true;
-            GridAnalyticsBarManager.ShowSelectionMetric("COUNT");
+            ShowSelectionMetricFooter("COUNT");
         }
 
         private static void OnMinClick(
@@ -252,7 +316,7 @@ namespace Zraxion.Extension
             ref bool cancelDefault)
         {
             cancelDefault = true;
-            GridAnalyticsBarManager.ShowSelectionMetric("MIN");
+            ShowSelectionMetricFooter("MIN");
         }
 
         private static void OnMaxClick(
@@ -260,7 +324,83 @@ namespace Zraxion.Extension
             ref bool cancelDefault)
         {
             cancelDefault = true;
-            GridAnalyticsBarManager.ShowSelectionMetric("MAX");
+            ShowSelectionMetricFooter("MAX");
+        }
+
+        private static void ShowSelectionMetricFooter(
+            string metric)
+        {
+            if (GridColumnAnalyticsFooterManager
+                .TryShowMetricForCurrentSelection(
+                    metric,
+                    out var error))
+            {
+                return;
+            }
+
+            MessageBox.Show(
+                error,
+                $"Zraxion - {metric}",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Warning);
+        }
+
+        private static void OnColumnSumClick(
+            CommandBarButton ctrl,
+            ref bool cancelDefault)
+        {
+            cancelDefault = true;
+            ShowWholeColumnMetricFooter("SUM");
+        }
+
+        private static void OnColumnAverageClick(
+            CommandBarButton ctrl,
+            ref bool cancelDefault)
+        {
+            cancelDefault = true;
+            ShowWholeColumnMetricFooter("AVG");
+        }
+
+        private static void OnColumnCountClick(
+            CommandBarButton ctrl,
+            ref bool cancelDefault)
+        {
+            cancelDefault = true;
+            ShowWholeColumnMetricFooter("COUNT");
+        }
+
+        private static void OnColumnMinClick(
+            CommandBarButton ctrl,
+            ref bool cancelDefault)
+        {
+            cancelDefault = true;
+            ShowWholeColumnMetricFooter("MIN");
+        }
+
+        private static void OnColumnMaxClick(
+            CommandBarButton ctrl,
+            ref bool cancelDefault)
+        {
+            cancelDefault = true;
+            ShowWholeColumnMetricFooter("MAX");
+        }
+
+        private static void ShowWholeColumnMetricFooter(
+            string metric)
+        {
+            if (GridColumnAnalyticsFooterManager
+                .TryShowMetricForCurrentColumn(
+                    metric,
+                    out var error))
+            {
+                return;
+            }
+
+            MessageBox.Show(
+                error,
+                $"Zraxion - Column {metric}",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Warning);
         }
 
         private static void OnSetBaselineClick(
