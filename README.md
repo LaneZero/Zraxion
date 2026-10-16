@@ -13,7 +13,7 @@
 [![Platform](https://img.shields.io/badge/platform-Windows%20x64-0078D4?style=flat-square)](#requirements)
 [![License](https://img.shields.io/badge/license-Apache--2.0-4C8BF5?style=flat-square)](LICENSE)
 
-[Features](#features) · [Installation](#installation) · [Usage](#usage) · [Precision](#financial-precision) · [Support](#support-the-project) · [Build](#building-from-source) · [Contributing](CONTRIBUTING.md)
+[Features](#features) · [Video Guide](#video-guide) · [Installation](#installation) · [Usage](#usage) · [Uninstall](#uninstall-zraxion) · [Precision](#financial-precision) · [Support](#support-the-project) · [Build](#building-from-source) · [Contributing](CONTRIBUTING.md)
 
 </div>
 
@@ -32,6 +32,20 @@ The extension is designed around one principle:
 > **Do the analysis where the data already is.**
 
 Zraxion does not replace SQL, Power BI, Excel, or a reconciliation platform. It removes small but frequent workflow interruptions when inspecting query results inside SSMS.
+
+---
+
+## Video Guide
+
+A complete walkthrough of Zraxion, including Results Grid analytics, the Analytics Bar, A/B comparison, tolerance rules, and the general workflow, is available on YouTube.
+
+<div align="center">
+
+[![Watch the Zraxion usage guide on YouTube](https://img.youtube.com/vi/lxmo-smLcOY/hqdefault.jpg)](https://www.youtube.com/watch?v=lxmo-smLcOY)
+
+**[▶ Watch: How to use Zraxion](https://www.youtube.com/watch?v=lxmo-smLcOY)**
+
+</div>
 
 ---
 
@@ -273,6 +287,175 @@ For financial reconciliation:
 
 ---
 
+## Uninstall Zraxion
+
+The recommended first option is to remove Zraxion through the normal VSIX/extension-management workflow available on the machine. If the extension remains installed, the normal uninstaller is unavailable, or an SSMS profile contains a stale Zraxion extension folder, the following PowerShell cleanup can be used.
+
+> [!WARNING]
+> Save all open queries and work before continuing. If SSMS is running, the script asks for confirmation before closing it. After confirmation, it first requests a normal close and then force-stops any remaining SSMS process so the extension files are not locked.
+
+The script intentionally does **not** hard-code a Windows username or an SSMS profile hash. It discovers SSMS 22 profiles under the current user's `%LOCALAPPDATA%`.
+
+Run the following in PowerShell:
+
+```powershell
+Clear-Host
+$ErrorActionPreference = 'Stop'
+
+$dllName = 'Zraxion.Extension.dll'
+$ssmsRoot = Join-Path $env:LOCALAPPDATA 'Microsoft\SSMS'
+$settingsPath = Join-Path $env:LOCALAPPDATA 'Zraxion'
+
+Write-Host 'Zraxion manual uninstall' -ForegroundColor Cyan
+Write-Host '-------------------------' -ForegroundColor Cyan
+
+# SSMS must be closed before extension files are removed.
+$ssmsProcesses = @(Get-Process -Name 'ssms' -ErrorAction SilentlyContinue)
+
+if ($ssmsProcesses.Count -gt 0) {
+    Write-Host ''
+    Write-Warning 'SQL Server Management Studio is currently running.'
+    Write-Warning 'Save all open queries and work before continuing.'
+    Write-Warning 'If SSMS does not close normally, this script may force-stop the remaining process after confirmation.'
+
+    $answer = (Read-Host 'Close SSMS and continue with the Zraxion uninstall? [y/N]').Trim()
+
+    if ($answer -notmatch '^(?i:y|yes)$') {
+        Write-Host 'Uninstall cancelled. No files were removed.' -ForegroundColor Yellow
+        exit 0
+    }
+
+    Write-Host 'Requesting SSMS to close...' -ForegroundColor Cyan
+
+    foreach ($process in $ssmsProcesses) {
+        try {
+            [void]$process.CloseMainWindow()
+        }
+        catch {
+            # Graceful close is best-effort; remaining processes are handled below.
+        }
+    }
+
+    $deadline = (Get-Date).AddSeconds(10)
+    do {
+        Start-Sleep -Milliseconds 500
+        $remaining = @(Get-Process -Name 'ssms' -ErrorAction SilentlyContinue)
+    } while ($remaining.Count -gt 0 -and (Get-Date) -lt $deadline)
+
+    if ($remaining.Count -gt 0) {
+        Write-Warning 'SSMS did not exit within 10 seconds. Force-closing the remaining process(es)...'
+
+        foreach ($process in $remaining) {
+            try {
+                Stop-Process -Id $process.Id -Force -ErrorAction Stop
+                Write-Host "Stopped ssms.exe (PID: $($process.Id))" -ForegroundColor Green
+            }
+            catch {
+                Write-Host "Failed to stop ssms.exe (PID: $($process.Id)): $($_.Exception.Message)" -ForegroundColor Red
+                exit 1
+            }
+        }
+    }
+    else {
+        Write-Host 'SSMS closed successfully.' -ForegroundColor Green
+    }
+}
+else {
+    Write-Host 'SSMS is not running.' -ForegroundColor Green
+}
+
+Write-Host ''
+Write-Host 'Searching for Zraxion in SSMS 22 profiles...' -ForegroundColor Cyan
+
+if (-not (Test-Path -LiteralPath $ssmsRoot -PathType Container)) {
+    Write-Host "SSMS user-data path was not found: $ssmsRoot" -ForegroundColor Yellow
+    exit 0
+}
+
+$profileDirs = @(
+    Get-ChildItem -LiteralPath $ssmsRoot -Directory -ErrorAction Stop |
+        Where-Object { $_.Name -like '22.0_*' }
+)
+
+if ($profileDirs.Count -eq 0) {
+    Write-Host "No SSMS 22 profile directories were found under: $ssmsRoot" -ForegroundColor Yellow
+    exit 0
+}
+
+# Locate Zraxion by its assembly instead of relying on a machine-specific
+# profile name or VSIX-generated extension directory name.
+$matchingDirs = @(
+    foreach ($profile in $profileDirs) {
+        $extensionsPath = Join-Path $profile.FullName 'Extensions'
+
+        if (-not (Test-Path -LiteralPath $extensionsPath -PathType Container)) {
+            continue
+        }
+
+        Get-ChildItem -LiteralPath $extensionsPath -File -Filter $dllName -Recurse -ErrorAction SilentlyContinue |
+            ForEach-Object { $_.Directory.FullName }
+    }
+) | Sort-Object -Unique
+
+if ($matchingDirs.Count -eq 0) {
+    Write-Host "No installed Zraxion extension containing '$dllName' was found." -ForegroundColor Yellow
+}
+else {
+    Write-Host "Found $($matchingDirs.Count) Zraxion extension folder(s):" -ForegroundColor Cyan
+    $matchingDirs | ForEach-Object { Write-Host "  $_" }
+
+    $failed = $false
+
+    foreach ($dir in $matchingDirs) {
+        Write-Host "Removing: $dir" -ForegroundColor Yellow
+
+        try {
+            Remove-Item -LiteralPath $dir -Recurse -Force -ErrorAction Stop
+            Write-Host 'Removed successfully.' -ForegroundColor Green
+        }
+        catch {
+            $failed = $true
+            Write-Host "Failed to remove '$dir': $($_.Exception.Message)" -ForegroundColor Red
+        }
+    }
+
+    if ($failed) {
+        Write-Host 'One or more Zraxion folders could not be removed.' -ForegroundColor Red
+        exit 1
+    }
+}
+
+# User settings are separate from the VSIX installation. Keep them by default.
+if (Test-Path -LiteralPath $settingsPath -PathType Container) {
+    Write-Host ''
+    $removeSettings = (Read-Host "Also remove Zraxion local settings from '$settingsPath'? [y/N]").Trim()
+
+    if ($removeSettings -match '^(?i:y|yes)$') {
+        try {
+            Remove-Item -LiteralPath $settingsPath -Recurse -Force -ErrorAction Stop
+            Write-Host 'Local Zraxion settings removed.' -ForegroundColor Green
+        }
+        catch {
+            Write-Host "Failed to remove local settings: $($_.Exception.Message)" -ForegroundColor Red
+            exit 1
+        }
+    }
+    else {
+        Write-Host 'Local Zraxion settings were kept.' -ForegroundColor DarkGray
+    }
+}
+
+Write-Host ''
+Write-Host 'Zraxion uninstall cleanup completed.' -ForegroundColor Green
+```
+
+After the script completes, start SSMS again and confirm that **Zraxion** no longer appears in the Results Grid context menu or under **Tools → Zraxion**.
+
+> [!NOTE]
+> Zraxion settings are stored separately under `%LOCALAPPDATA%\Zraxion`. The script keeps these settings by default and asks before deleting them, which makes reinstalling or upgrading less destructive.
+
+---
+
 ## Settings
 
 Zraxion stores local preferences under:
@@ -422,7 +605,7 @@ Zraxion v1.0.0 intentionally keeps the scope focused.
 - Zraxion does not alter source query results or database data
 - Zraxion does not automatically upload analytics or comparison data
 
-These boundaries are documented rather than hidden behind optimistic marketing fog.
+These boundaries are intentionally documented so release behavior and scope remain clear.
 
 ---
 
