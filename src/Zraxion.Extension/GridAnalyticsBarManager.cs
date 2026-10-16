@@ -384,6 +384,70 @@ namespace Zraxion.Extension
             }
         }
 
+        internal static void ShowBaseline()
+        {
+            var baseline =
+                GridComparisonSession.LeftSnapshot;
+
+            if (baseline is null)
+            {
+                return;
+            }
+
+            if (analyticsBar is null ||
+                analyticsBar.IsDisposed)
+            {
+                AttachToCurrentResults(
+                    showSelectionMetrics: false);
+            }
+
+            var bar = analyticsBar;
+            var host = analyticsHost;
+
+            if (bar is null ||
+                bar.IsDisposed)
+            {
+                return;
+            }
+
+            var metadata =
+                GridComparisonSession.LeftMetadata;
+
+            if (host is not null &&
+                !host.IsDisposed &&
+                host.IsHandleCreated)
+            {
+                try
+                {
+                    host.BeginInvoke(
+                        new Action(
+                            () =>
+                            {
+                                if (bar.IsDisposed)
+                                {
+                                    return;
+                                }
+
+                                bar.ShowBaseline(
+                                    baseline,
+                                    metadata);
+
+                                PositionAnalyticsBar(host);
+                            }));
+
+                    return;
+                }
+                catch (InvalidOperationException)
+                {
+                    // Fall through to direct display.
+                }
+            }
+
+            bar.ShowBaseline(
+                baseline,
+                metadata);
+        }
+
         internal static void ClearComparisonView()
         {
             var bar = analyticsBar;
@@ -394,13 +458,9 @@ namespace Zraxion.Extension
                 return;
             }
 
+            // Clearing comparison state should leave the bar visually empty.
+            // Do not immediately repopulate it from the active selection.
             bar.ClearComparison();
-
-            if (activeGrid is not null &&
-                !activeGrid.IsDisposed)
-            {
-                UpdateFromGrid(activeGrid);
-            }
         }
 
         internal static void ShowComparison(

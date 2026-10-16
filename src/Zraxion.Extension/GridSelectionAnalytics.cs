@@ -160,9 +160,12 @@ namespace Zraxion.Extension
             NumericSelectionSummary result,
             string? rawValue)
         {
-            if (string.IsNullOrWhiteSpace(rawValue) ||
+            var normalizedValue =
+                rawValue?.Trim();
+
+            if (string.IsNullOrWhiteSpace(normalizedValue) ||
                 string.Equals(
-                    rawValue.Trim(),
+                    normalizedValue,
                     "NULL",
                     StringComparison.OrdinalIgnoreCase))
             {
@@ -179,13 +182,13 @@ namespace Zraxion.Extension
 
             var parsed =
                 decimal.TryParse(
-                    rawValue,
+                    normalizedValue,
                     styles,
                     CultureInfo.CurrentCulture,
                     out value)
                 ||
                 decimal.TryParse(
-                    rawValue,
+                    normalizedValue,
                     styles,
                     CultureInfo.InvariantCulture,
                     out value);

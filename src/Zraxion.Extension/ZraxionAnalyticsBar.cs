@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Drawing;
 using System.Globalization;
+using System.Runtime.InteropServices;
+using System.Threading;
 using System.Windows.Forms;
 
 namespace Zraxion.Extension
@@ -19,14 +21,27 @@ namespace Zraxion.Extension
 
         private readonly Button metricsButton;
         private readonly ContextMenuStrip metricsMenu;
+        private readonly ToolStripMenuItem showBaselineMenuItem;
         private readonly ToolStripMenuItem showComparisonMenuItem;
 
         private readonly CheckBox autoRefreshCheckBox;
         private readonly Button refreshButton;
+        private readonly ToolTip actionToolTip;
+        private readonly ContextMenuStrip comparisonCopyMenu;
+        private readonly ToolStripMenuItem copyAItem;
+        private readonly ToolStripMenuItem copyBItem;
+        private readonly ToolStripMenuItem copyDifferenceItem;
+        private readonly ToolStripMenuItem copyDifferencePercentItem;
+        private readonly ToolStripMenuItem copySummaryItem;
         private readonly GridAnalyticsDisplayOptions displayOptions;
 
+        private GridAnalyticsSnapshot? lastBaseline;
+        private GridComparisonSession.BaselineMetadata? lastBaselineMetadata;
         private GridAnalyticsComparison? lastComparison;
+
+        private bool baselineMode;
         private bool comparisonMode;
+        private bool clearedMode;
         private string? focusedMetric;
 
 
@@ -43,6 +58,15 @@ namespace Zraxion.Extension
         public ZraxionAnalyticsBar()
         {
             displayOptions = GridAnalyticsSettingsStore.Load();
+
+            actionToolTip = new ToolTip
+            {
+                ShowAlways = true,
+                InitialDelay = 350,
+                ReshowDelay = 100,
+                AutoPopDelay = 8000
+            };
+
             Name = "ZraxionAnalyticsBar";
 
             Height = 38;
@@ -105,6 +129,79 @@ namespace Zraxion.Extension
             nullSeparator = CreateSeparator();
             nonNumericSeparator = CreateSeparator();
 
+            comparisonCopyMenu =
+                new ContextMenuStrip
+                {
+                    ShowItemToolTips = true
+                };
+
+            copyAItem =
+                new ToolStripMenuItem("Copy A")
+                {
+                    ToolTipText =
+                        "Copy the raw SUM value stored in baseline A."
+                };
+
+            copyBItem =
+                new ToolStripMenuItem("Copy B")
+                {
+                    ToolTipText =
+                        "Copy the raw SUM value from the current comparison selection B."
+                };
+
+            copyDifferenceItem =
+                new ToolStripMenuItem("Copy Difference")
+                {
+                    ToolTipText =
+                        "Copy the raw difference using B - A."
+                };
+
+            copyDifferencePercentItem =
+                new ToolStripMenuItem("Copy Difference %")
+                {
+                    ToolTipText =
+                        "Copy the comparison percentage difference without display formatting."
+                };
+
+            copySummaryItem =
+                new ToolStripMenuItem("Copy Summary")
+                {
+                    ToolTipText =
+                        "Copy the full Baseline or Compare summary as displayed."
+                };
+
+            copyAItem.Click +=
+                (_, __) => CopyComparisonValue("A");
+
+            copyBItem.Click +=
+                (_, __) => CopyComparisonValue("B");
+
+            copyDifferenceItem.Click +=
+                (_, __) => CopyComparisonValue("DIFF");
+
+            copyDifferencePercentItem.Click +=
+                (_, __) => CopyComparisonValue("PERCENT");
+
+            copySummaryItem.Click +=
+                (_, __) => TryCopyToClipboard(
+                    compareLabel.Text);
+
+            comparisonCopyMenu.Items.Add(copyAItem);
+            comparisonCopyMenu.Items.Add(copyBItem);
+            comparisonCopyMenu.Items.Add(
+                new ToolStripSeparator());
+            comparisonCopyMenu.Items.Add(copyDifferenceItem);
+            comparisonCopyMenu.Items.Add(copyDifferencePercentItem);
+            comparisonCopyMenu.Items.Add(
+                new ToolStripSeparator());
+            comparisonCopyMenu.Items.Add(copySummaryItem);
+
+            comparisonCopyMenu.Opening +=
+                (_, __) => UpdateComparisonCopyMenuState();
+
+            compareLabel.ContextMenuStrip =
+                comparisonCopyMenu;
+
             minLabel.Visible = displayOptions.ShowMin;
             maxLabel.Visible = displayOptions.ShowMax;
             nullLabel.Visible = displayOptions.ShowNullOrEmpty;
@@ -166,6 +263,10 @@ namespace Zraxion.Extension
                 Margin = new Padding(6, 8, 8, 0)
             };
 
+            actionToolTip.SetToolTip(
+                autoRefreshCheckBox,
+                "Automatically refresh selection metrics when the active Results Grid selection changes.");
+
             autoRefreshCheckBox.CheckedChanged +=
                 OnAutoRefreshCheckedChanged;
 
@@ -184,16 +285,29 @@ namespace Zraxion.Extension
             refreshButton.FlatAppearance.BorderSize = 1;
 
 
+            actionToolTip.SetToolTip(
+                refreshButton,
+                "Recalculate the analytics bar for the current Results Grid selection.");
+
             refreshButton.Click +=
                 OnRefreshButtonClick;
 
-            var newMetricsMenu = new ContextMenuStrip();
+            var newMetricsMenu = new ContextMenuStrip
+            {
+                ShowItemToolTips = true
+            };
 
             var showSelectionMetricsItem =
-                new ToolStripMenuItem("Show selection metrics");
+                new ToolStripMenuItem("Selection metrics")
+                {
+                    ToolTipText =
+                        "Show analytics for the cells currently selected in the Results Grid."
+                };
 
             showSelectionMetricsItem.Click += (_, __) =>
             {
+                clearedMode = false;
+                baselineMode = false;
                 comparisonMode = false;
                 focusedMetric = null;
                 ApplyCurrentView();
@@ -201,10 +315,36 @@ namespace Zraxion.Extension
 
             newMetricsMenu.Items.Add(showSelectionMetricsItem);
 
-            showComparisonMenuItem =
-                new ToolStripMenuItem("Show comparison")
+            showBaselineMenuItem =
+                new ToolStripMenuItem("Baseline A")
                 {
-                    Enabled = false
+                    Enabled = false,
+                    ToolTipText =
+                        "Show the saved comparison baseline A without changing or recalculating it."
+                };
+
+            showBaselineMenuItem.Click += (_, __) =>
+            {
+                if (lastBaseline is null)
+                {
+                    return;
+                }
+
+                clearedMode = false;
+                baselineMode = true;
+                comparisonMode = false;
+                focusedMetric = null;
+                ApplyCurrentView();
+            };
+
+            newMetricsMenu.Items.Add(showBaselineMenuItem);
+
+            showComparisonMenuItem =
+                new ToolStripMenuItem("Last comparison")
+                {
+                    Enabled = false,
+                    ToolTipText =
+                        "Show the most recent A-versus-B comparison result."
                 };
 
             showComparisonMenuItem.Click += (_, __) =>
@@ -214,12 +354,23 @@ namespace Zraxion.Extension
                     return;
                 }
 
+                clearedMode = false;
+                baselineMode = false;
                 comparisonMode = true;
+                focusedMetric = null;
                 ApplyCurrentView();
             };
 
             newMetricsMenu.Items.Add(showComparisonMenuItem);
             newMetricsMenu.Items.Add(new ToolStripSeparator());
+
+            newMetricsMenu.Items.Add(
+                new ToolStripMenuItem("Visible selection metrics")
+                {
+                    Enabled = false,
+                    ToolTipText =
+                        "Choose which metrics are visible when the bar is in Selection metrics view."
+                });
 
             var sumItem =
                 CreateMetricMenuItem(
@@ -384,7 +535,7 @@ namespace Zraxion.Extension
             var newMetricsButton = new Button
             {
                 AutoSize = true,
-                Text = "Metrics",
+                Text = "View",
                 FlatStyle = FlatStyle.Flat,
                 Margin = new Padding(6, 5, 0, 0),
                 Padding = new Padding(6, 0, 6, 0),
@@ -392,6 +543,10 @@ namespace Zraxion.Extension
             };
 
             newMetricsButton.FlatAppearance.BorderSize = 1;
+
+            actionToolTip.SetToolTip(
+                newMetricsButton,
+                "Switch between Selection metrics, Baseline A, and Last comparison, or choose which selection metrics are visible.");
 
             newMetricsButton.Click += (_, __) =>
             {
@@ -485,6 +640,67 @@ namespace Zraxion.Extension
             ApplyCurrentView();
         }
 
+        public void ShowBaseline(
+            GridAnalyticsSnapshot baseline,
+            GridComparisonSession.BaselineMetadata? metadata)
+        {
+            if (baseline is null)
+            {
+                throw new ArgumentNullException(
+                    nameof(baseline));
+            }
+
+            lastBaseline = baseline;
+            lastBaselineMetadata = metadata;
+
+            clearedMode = false;
+            baselineMode = true;
+            comparisonMode = false;
+            focusedMetric = null;
+
+            showBaselineMenuItem.Enabled = true;
+
+            var contextParts =
+                new System.Collections.Generic.List<string>();
+
+            if (metadata is not null)
+            {
+                if (metadata.ResultGridIndex >= 0)
+                {
+                    contextParts.Add(
+                        $"Result {metadata.ResultGridIndex}");
+                }
+
+                if (metadata.UiColumnIndex.HasValue)
+                {
+                    contextParts.Add(
+                        $"Column {metadata.UiColumnIndex.Value + 1}");
+                }
+
+                contextParts.Add(
+                    metadata.CapturedAtUtc
+                        .ToLocalTime()
+                        .ToString(
+                            "HH:mm:ss",
+                            CultureInfo.CurrentCulture));
+            }
+
+            var context =
+                contextParts.Count > 0
+                    ? "   |   " +
+                      string.Join(
+                          "   |   ",
+                          contextParts)
+                    : string.Empty;
+
+            compareLabel.Text =
+                $"BASELINE A   SUM {FormatNumber(baseline.Sum)}" +
+                $"   |   COUNT {baseline.NumericCount:N0}" +
+                context;
+
+            ApplyCurrentView();
+        }
+
         public void ShowComparison(
             GridAnalyticsComparison comparison)
         {
@@ -494,7 +710,20 @@ namespace Zraxion.Extension
             }
 
             lastComparison = comparison;
+
+            if (lastBaseline is null)
+            {
+                lastBaseline = comparison.Left;
+            }
+
+            clearedMode = false;
+            baselineMode = false;
             comparisonMode = true;
+            focusedMetric = null;
+
+            showBaselineMenuItem.Enabled =
+                lastBaseline is not null;
+
             showComparisonMenuItem.Enabled = true;
 
             var percent =
@@ -520,6 +749,8 @@ namespace Zraxion.Extension
 
         public void ShowSelectionMetricsView()
         {
+            clearedMode = false;
+            baselineMode = false;
             comparisonMode = false;
             focusedMetric = null;
             ApplyCurrentView();
@@ -535,6 +766,8 @@ namespace Zraxion.Extension
                     nameof(metric));
             }
 
+            clearedMode = false;
+            baselineMode = false;
             comparisonMode = false;
             focusedMetric = metric.Trim().ToUpperInvariant();
             ApplyCurrentView();
@@ -542,10 +775,19 @@ namespace Zraxion.Extension
 
         public void ClearComparison()
         {
+            lastBaseline = null;
+            lastBaselineMetadata = null;
             lastComparison = null;
+
+            clearedMode = true;
+            clearedMode = false;
+            baselineMode = false;
             comparisonMode = false;
             focusedMetric = null;
+
+            showBaselineMenuItem.Enabled = false;
             showComparisonMenuItem.Enabled = false;
+
             compareLabel.Text = string.Empty;
 
             ApplyCurrentView();
@@ -563,8 +805,16 @@ namespace Zraxion.Extension
             nonNumericLabel.Text = "NON-NUMERIC  0";
 
             compareLabel.Text = string.Empty;
+
+            lastBaseline = null;
+            lastBaselineMetadata = null;
             lastComparison = null;
+
+            baselineMode = false;
             comparisonMode = false;
+            focusedMetric = null;
+
+            showBaselineMenuItem.Enabled = false;
             showComparisonMenuItem.Enabled = false;
 
             ApplyCurrentView();
@@ -572,6 +822,59 @@ namespace Zraxion.Extension
 
         private void ApplyCurrentView()
         {
+            if (clearedMode)
+            {
+                resultLabel.Visible = false;
+
+                sumLabel.Visible = false;
+                countLabel.Visible = false;
+                averageLabel.Visible = false;
+                minLabel.Visible = false;
+                maxLabel.Visible = false;
+                nullLabel.Visible = false;
+                nonNumericLabel.Visible = false;
+
+                sumSeparator.Visible = false;
+                countSeparator.Visible = false;
+                averageSeparator.Visible = false;
+                minSeparator.Visible = false;
+                maxSeparator.Visible = false;
+                nullSeparator.Visible = false;
+                nonNumericSeparator.Visible = false;
+
+                compareSeparator.Visible = false;
+                compareLabel.Visible = false;
+
+                return;
+            }
+
+            if (baselineMode &&
+                lastBaseline is not null)
+            {
+                resultLabel.Visible = false;
+
+                sumLabel.Visible = false;
+                countLabel.Visible = false;
+                averageLabel.Visible = false;
+                minLabel.Visible = false;
+                maxLabel.Visible = false;
+                nullLabel.Visible = false;
+                nonNumericLabel.Visible = false;
+
+                sumSeparator.Visible = false;
+                countSeparator.Visible = false;
+                averageSeparator.Visible = false;
+                minSeparator.Visible = false;
+                maxSeparator.Visible = false;
+                nullSeparator.Visible = false;
+                nonNumericSeparator.Visible = false;
+
+                compareSeparator.Visible = false;
+                compareLabel.Visible = true;
+
+                return;
+            }
+
             if (comparisonMode &&
                 lastComparison is not null)
             {
@@ -736,20 +1039,188 @@ namespace Zraxion.Extension
         }
 
         private static ToolStripMenuItem CreateMetricMenuItem(
-    string name,
-    bool isChecked,
-    EventHandler onClick)
+            string name,
+            bool isChecked,
+            EventHandler onClick)
         {
             var item = new ToolStripMenuItem(name)
             {
                 Name = name,
                 Checked = isChecked,
-                CheckOnClick = true
+                CheckOnClick = true,
+                ToolTipText = GetMetricToolTip(name)
             };
 
             item.Click += onClick;
 
             return item;
+        }
+
+        private static string GetMetricToolTip(
+            string name)
+        {
+            switch (name?.Trim().ToUpperInvariant())
+            {
+                case "SUM":
+                    return "Show or hide the sum of numeric cells in Selection metrics view.";
+
+                case "COUNT":
+                    return "Show or hide the count of numeric cells. NULL, empty, and non-numeric cells are excluded.";
+
+                case "AVG":
+                    return "Show or hide the average of numeric cells in Selection metrics view.";
+
+                case "MIN":
+                    return "Show or hide the minimum numeric value in Selection metrics view.";
+
+                case "MAX":
+                    return "Show or hide the maximum numeric value in Selection metrics view.";
+
+                case "NULL / EMPTY":
+                case "NULL":
+                    return "Show or hide the number of NULL or empty cells in the current selection.";
+
+                case "NON-NUMERIC":
+                    return "Show or hide the number of selected cells that could not be parsed as numbers.";
+
+                default:
+                    return "Show or hide this value in Selection metrics view.";
+            }
+        }
+
+
+        private void UpdateComparisonCopyMenuState()
+        {
+            var hasBaseline =
+                lastBaseline is not null;
+
+            var hasComparison =
+                lastComparison is not null &&
+                comparisonMode;
+
+            copyAItem.Enabled =
+                hasBaseline || hasComparison;
+
+            copyBItem.Enabled =
+                hasComparison;
+
+            copyDifferenceItem.Enabled =
+                hasComparison;
+
+            copyDifferencePercentItem.Enabled =
+                hasComparison &&
+                lastComparison!.DifferencePercent.HasValue;
+
+            copySummaryItem.Enabled =
+                !string.IsNullOrWhiteSpace(
+                    compareLabel.Text);
+        }
+
+        private void CopyComparisonValue(
+            string valueKind)
+        {
+            var normalizedKind =
+                valueKind?.Trim().ToUpperInvariant();
+
+            string? value = null;
+
+            if (normalizedKind == "A")
+            {
+                var baseline =
+                    comparisonMode &&
+                    lastComparison is not null
+                        ? lastComparison.Left
+                        : lastBaseline;
+
+                if (baseline is not null)
+                {
+                    value =
+                        baseline.Sum.ToString(
+                            "G29",
+                            CultureInfo.InvariantCulture);
+                }
+            }
+            else if (
+                comparisonMode &&
+                lastComparison is not null)
+            {
+                switch (normalizedKind)
+                {
+                    case "B":
+                        value =
+                            lastComparison.Right.Sum.ToString(
+                                "G29",
+                                CultureInfo.InvariantCulture);
+                        break;
+
+                    case "DIFF":
+                        value =
+                            lastComparison.Difference.ToString(
+                                "G29",
+                                CultureInfo.InvariantCulture);
+                        break;
+
+                    case "PERCENT":
+                        if (lastComparison.DifferencePercent.HasValue)
+                        {
+                            value =
+                                lastComparison
+                                    .DifferencePercent
+                                    .Value
+                                    .ToString(
+                                        "G29",
+                                        CultureInfo.InvariantCulture);
+                        }
+
+                        break;
+                }
+            }
+
+            if (!string.IsNullOrEmpty(value))
+            {
+                TryCopyToClipboard(value);
+            }
+        }
+
+        private static bool TryCopyToClipboard(
+            string? text)
+        {
+            if (string.IsNullOrEmpty(text))
+            {
+                return false;
+            }
+
+            for (var attempt = 0;
+                 attempt < 3;
+                 attempt++)
+            {
+                try
+                {
+                    Clipboard.SetText(text);
+                    return true;
+                }
+                catch (ExternalException)
+                {
+                    if (attempt < 2)
+                    {
+                        Thread.Sleep(25);
+                    }
+                }
+            }
+
+            return false;
+        }
+
+        protected override void Dispose(
+            bool disposing)
+        {
+            if (disposing)
+            {
+                comparisonCopyMenu.Dispose();
+                actionToolTip.Dispose();
+            }
+
+            base.Dispose(disposing);
         }
 
 

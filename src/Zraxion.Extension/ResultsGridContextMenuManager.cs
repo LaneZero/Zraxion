@@ -418,8 +418,7 @@ namespace Zraxion.Extension
                     StringComparison.Ordinal))
             {
                 // No success modal. The analytics bar is the feedback surface.
-                GridAnalyticsBarManager.AttachToCurrentResults(
-                    showSelectionMetrics: true);
+                GridAnalyticsBarManager.ShowBaseline();
 
                 return;
             }
