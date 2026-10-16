@@ -1,5 +1,6 @@
-﻿using Microsoft.VisualStudio;
+using Microsoft.VisualStudio;
 using Microsoft.VisualStudio.Shell;
+using Microsoft.VisualStudio.Shell.Interop;
 using System;
 using System.Runtime.InteropServices;
 using System.Threading;
@@ -38,6 +39,7 @@ namespace Zraxion.Extension
         PackageAutoLoadFlags.BackgroundLoad)]
 
     [ProvideMenuResource("Menus.ctmenu", 1)]
+    [ProvideToolWindow(typeof(ZraxionWelcomeToolWindow), DocumentLikeTool = true)]
     public sealed class ZraxionExtensionPackage : AsyncPackage
     {
         /// <summary>
@@ -71,7 +73,13 @@ namespace Zraxion.Extension
             await CountSelectedCellsCommand.InitializeAsync(this);
             await SetComparisonBaselineCommand.InitializeAsync(this);
             await CompareSelectionWithBaselineCommand.InitializeAsync(this);
+            await CheckForZraxionUpdatesCommand.InitializeAsync(this);
+
             ResultsGridContextMenuManager.Initialize();
+
+            // Show Welcome once per installed version and check for updates without
+            // blocking the normal SSMS startup path.
+            ZraxionStartupCoordinator.Start(this);
 
         }
 
@@ -80,6 +88,49 @@ namespace Zraxion.Extension
 
 
 
+
+
+        internal async Task ShowWelcomeToolWindowAsync(bool force)
+        {
+            if (!force &&
+                !ZraxionWelcomeState.ShouldShowForCurrentVersion())
+            {
+                return;
+            }
+
+            var pane =
+                await ShowToolWindowAsync(
+                    typeof(ZraxionWelcomeToolWindow),
+                    0,
+                    true,
+                    DisposalToken);
+
+            if (pane is null)
+            {
+                return;
+            }
+
+            // IVsWindowFrame is a UI-thread-affine COM service. ShowToolWindowAsync
+            // may resume on a background thread, so explicitly switch back before
+            // reading Frame, changing frame mode, or calling Show().
+            await JoinableTaskFactory.SwitchToMainThreadAsync(DisposalToken);
+
+            // Welcome belongs in the SSMS document well, not as a floating
+            // utility window. Force document-like MDI mode even if SSMS has
+            // persisted an older floating placement from a previous build.
+            if (pane.Frame is IVsWindowFrame frame)
+            {
+                ErrorHandler.ThrowOnFailure(
+                    frame.SetProperty(
+                        (int)__VSFPROPID.VSFPROPID_FrameMode,
+                        (int)VsFrameMode.MdiChild));
+
+                ErrorHandler.ThrowOnFailure(
+                    frame.Show());
+            }
+
+            ZraxionWelcomeState.MarkCurrentVersionShown();
+        }
 
         #endregion
     }

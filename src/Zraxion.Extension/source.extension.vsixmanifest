@@ -15,6 +15,8 @@
     <Description xml:space="preserve">
       Productivity, result-grid analysis, DBA, and developer tools for SQL Server Management Studio 22.
     </Description>
+
+    <MoreInfo>https://github.com/LaneZero/Zraxion</MoreInfo>
   </Metadata>
 
   <Installation>

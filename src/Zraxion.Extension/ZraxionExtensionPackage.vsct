@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <CommandTable xmlns="http://schemas.microsoft.com/VisualStudio/2005-10-18/CommandTable"
               xmlns:xs="http://www.w3.org/2001/XMLSchema">
 
@@ -27,8 +27,8 @@
 				<Parent guid="guidZraxionExtensionPackageCmdSet"
 						id="ZraxionRootGroup" />
 				<Strings>
-					<ButtonText>Analytics</ButtonText>
-					<CommandName>Analytics</CommandName>
+					<ButtonText>Selection Analytics</ButtonText>
+					<CommandName>Selection Analytics</CommandName>
 				</Strings>
 			</Menu>
 
@@ -76,8 +76,15 @@
 			</Group>
 
 			<Group guid="guidZraxionExtensionPackageCmdSet"
-				   id="ZraxionAboutGroup"
+				   id="ZraxionSupportGroup"
 				   priority="0x0300">
+				<Parent guid="guidZraxionExtensionPackageCmdSet"
+						id="ZraxionToolsMenu" />
+			</Group>
+
+			<Group guid="guidZraxionExtensionPackageCmdSet"
+				   id="ZraxionAboutGroup"
+				   priority="0x0400">
 				<Parent guid="guidZraxionExtensionPackageCmdSet"
 						id="ZraxionToolsMenu" />
 			</Group>
@@ -89,7 +96,7 @@
 					priority="0x0100"
 					type="Button">
 				<Parent guid="guidZraxionExtensionPackageCmdSet"
-						id="ZraxionAnalyticsGroup" />
+						id="ZraxionRootGroup" />
 				<Strings>
 					<ButtonText>Show Analytics Bar</ButtonText>
 				</Strings>
@@ -102,7 +109,7 @@
 				<Parent guid="guidZraxionExtensionPackageCmdSet"
 						id="ZraxionAnalyticsGroup" />
 				<Strings>
-					<ButtonText>Sum Selected Cells</ButtonText>
+					<ButtonText>SUM</ButtonText>
 				</Strings>
 			</Button>
 
@@ -113,7 +120,7 @@
 				<Parent guid="guidZraxionExtensionPackageCmdSet"
 						id="ZraxionAnalyticsGroup" />
 				<Strings>
-					<ButtonText>Average Selected Cells</ButtonText>
+					<ButtonText>AVG</ButtonText>
 				</Strings>
 			</Button>
 
@@ -124,7 +131,7 @@
 				<Parent guid="guidZraxionExtensionPackageCmdSet"
 						id="ZraxionAnalyticsGroup" />
 				<Strings>
-					<ButtonText>Count Selected Cells</ButtonText>
+					<ButtonText>COUNT</ButtonText>
 				</Strings>
 			</Button>
 
@@ -135,7 +142,7 @@
 				<Parent guid="guidZraxionExtensionPackageCmdSet"
 						id="ZraxionAnalyticsGroup" />
 				<Strings>
-					<ButtonText>Minimum Selected Cells</ButtonText>
+					<ButtonText>MIN</ButtonText>
 				</Strings>
 			</Button>
 
@@ -146,7 +153,7 @@
 				<Parent guid="guidZraxionExtensionPackageCmdSet"
 						id="ZraxionAnalyticsGroup" />
 				<Strings>
-					<ButtonText>Maximum Selected Cells</ButtonText>
+					<ButtonText>MAX</ButtonText>
 				</Strings>
 			</Button>
 
@@ -171,6 +178,16 @@
 						id="ZraxionCompareGroup" />
 				<Strings>
 					<ButtonText>Compare Selection with A</ButtonText>
+				</Strings>
+			</Button>
+<Button guid="guidZraxionExtensionPackageCmdSet"
+					id="CheckForZraxionUpdatesCommandId"
+					priority="0x0200"
+					type="Button">
+				<Parent guid="guidZraxionExtensionPackageCmdSet"
+						id="ZraxionSupportGroup" />
+				<Strings>
+					<ButtonText>Check for Updates</ButtonText>
 				</Strings>
 			</Button>
 
@@ -222,6 +239,7 @@
 			<IDSymbol name="CountSelectedCellsCommandId" value="0x0106" />
 			<IDSymbol name="SetComparisonBaselineCommandId" value="0x0107" />
 			<IDSymbol name="CompareSelectionWithBaselineCommandId" value="0x0108" />
+			<IDSymbol name="CheckForZraxionUpdatesCommandId" value="0x010A" />
 
 			<!-- New menu/group IDs use a separate range for safe rollback. -->
 			<IDSymbol name="ZraxionToolsMenu" value="0x1100" />
@@ -231,7 +249,8 @@
 			<IDSymbol name="ZraxionRootGroup" value="0x1210" />
 			<IDSymbol name="ZraxionAnalyticsGroup" value="0x1220" />
 			<IDSymbol name="ZraxionCompareGroup" value="0x1230" />
-			<IDSymbol name="ZraxionAboutGroup" value="0x1240" />
+			<IDSymbol name="ZraxionSupportGroup" value="0x1240" />
+			<IDSymbol name="ZraxionAboutGroup" value="0x1250" />
 		</GuidSymbol>
 
 		<GuidSymbol name="guidImages" value="{9fdb714e-e81d-4022-ad9e-ffc7609e4b63}">

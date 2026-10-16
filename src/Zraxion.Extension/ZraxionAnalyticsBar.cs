@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Drawing;
 using System.Globalization;
 using System.Runtime.InteropServices;
@@ -349,9 +349,22 @@ namespace Zraxion.Extension
                 ShowAlways = true
             };
 
+            var metricsToolTipHideTimer = new System.Windows.Forms.Timer
+            {
+                Interval = 140
+            };
+
+            metricsToolTipHideTimer.Tick += (_, __) =>
+            {
+                metricsToolTipHideTimer.Stop();
+                metricsMenuToolTip.Hide(this);
+            };
+
             void ShowMenuItemToolTip(
                 ToolStripItem item)
             {
+                metricsToolTipHideTimer.Stop();
+
                 if (string.IsNullOrWhiteSpace(
                         item.ToolTipText) ||
                     IsDisposed ||
@@ -401,8 +414,15 @@ namespace Zraxion.Extension
 
             void HideMenuItemToolTip()
             {
+                metricsToolTipHideTimer.Stop();
                 metricsMenuToolTip.Hide(
                     this);
+            }
+
+            void ScheduleMenuItemToolTipHide()
+            {
+                metricsToolTipHideTimer.Stop();
+                metricsToolTipHideTimer.Start();
             }
 
             newMetricsMenu.Closed += (_, __) =>
@@ -420,6 +440,9 @@ namespace Zraxion.Extension
             showSelectionMetricsItem.MouseEnter +=
                 (_, __) => ShowMenuItemToolTip(
                     showSelectionMetricsItem);
+
+            showSelectionMetricsItem.MouseLeave +=
+                (_, __) => ScheduleMenuItemToolTipHide();
 
             showSelectionMetricsItem.Click += (_, __) =>
             {
@@ -443,6 +466,9 @@ namespace Zraxion.Extension
             showBaselineMenuItem.MouseEnter +=
                 (_, __) => ShowMenuItemToolTip(
                     showBaselineMenuItem);
+
+            showBaselineMenuItem.MouseLeave +=
+                (_, __) => ScheduleMenuItemToolTipHide();
 
             showBaselineMenuItem.Click += (_, __) =>
             {
@@ -471,6 +497,9 @@ namespace Zraxion.Extension
             showComparisonMenuItem.MouseEnter +=
                 (_, __) => ShowMenuItemToolTip(
                     showComparisonMenuItem);
+
+            showComparisonMenuItem.MouseLeave +=
+                (_, __) => ScheduleMenuItemToolTipHide();
 
             showComparisonMenuItem.Click += (_, __) =>
             {
