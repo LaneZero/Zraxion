@@ -921,12 +921,6 @@ public static string InspectResultsPaneChildren()
             {
                 summary = GridSelectionAnalytics.Analyze(grid);
             }
-            catch (OverflowException)
-            {
-                return
-                    "SUM could not be calculated because the selected " +
-                    "numeric values exceed the supported decimal range.";
-            }
             catch (InvalidOperationException ex)
             {
                 return ex.Message;
@@ -999,12 +993,6 @@ public static string InspectResultsPaneChildren()
             try
             {
                 summary = GridSelectionAnalytics.Analyze(grid);
-            }
-            catch (OverflowException)
-            {
-                return
-                    $"{label} could not be calculated because the selected " +
-                    "numeric values exceed the supported decimal range.";
             }
             catch (InvalidOperationException ex)
             {
@@ -1160,12 +1148,6 @@ public static string InspectResultsPaneChildren()
                     grid,
                     "A");
             }
-            catch (OverflowException)
-            {
-                return
-                    "The comparison baseline could not be created because " +
-                    "the selected numeric values exceed the supported decimal range.";
-            }
             catch (InvalidOperationException ex)
             {
                 return ex.Message;
@@ -1293,12 +1275,6 @@ public static string InspectResultsPaneChildren()
                     grid,
                     "B");
             }
-            catch (OverflowException)
-            {
-                return
-                    "The comparison could not be completed because " +
-                    "the selected numeric values exceed the supported decimal range.";
-            }
             catch (InvalidOperationException ex)
             {
                 return ex.Message;
@@ -1315,23 +1291,12 @@ public static string InspectResultsPaneChildren()
                     "The current selection does not contain numeric values.";
             }
 
-            GridAnalyticsComparison comparison;
-
-            try
-            {
-                comparison =
-                    new GridAnalyticsComparison(
-                        baseline,
-                        current,
-                        GridComparisonSession.GetTolerancePolicy(
-                            comparisonContext));
-            }
-            catch (OverflowException)
-            {
-                return
-                    "The comparison could not be completed because " +
-                    "the calculated difference exceeds the supported decimal range.";
-            }
+            var comparison =
+                new GridAnalyticsComparison(
+                    baseline,
+                    current,
+                    GridComparisonSession.GetTolerancePolicy(
+                        comparisonContext));
 
             GridAnalyticsBarManager.ShowComparison(
                 comparison);
@@ -1582,13 +1547,6 @@ public static string InspectResultsPaneChildren()
             try
             {
                 summary = GridSelectionAnalytics.Analyze(grid);
-            }
-            catch (OverflowException)
-            {
-                label.Text =
-                    "Zraxion  |  Selected values exceed the supported decimal range.";
-
-                return "Analytics bar updated with an overflow warning.";
             }
             catch (InvalidOperationException ex)
             {

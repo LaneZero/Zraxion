@@ -26,6 +26,7 @@ namespace Zraxion.Extension
 
         private readonly CheckBox autoRefreshCheckBox;
         private readonly Button refreshButton;
+        private readonly Button copyButton;
         private readonly ToolTip actionToolTip;
         private readonly ContextMenuStrip comparisonCopyMenu;
         private readonly ToolStripMenuItem copyAItem;
@@ -34,6 +35,9 @@ namespace Zraxion.Extension
         private readonly ToolStripMenuItem copyDifferencePercentItem;
         private readonly ToolStripMenuItem copySummaryItem;
         private readonly GridAnalyticsDisplayOptions displayOptions;
+
+        private GridSelectionAnalytics.NumericSelectionSummary? lastSelectionSummary;
+        private int lastSelectionResultIndex;
 
         private GridAnalyticsSnapshot? lastBaseline;
         private GridComparisonSession.BaselineMetadata? lastBaselineMetadata;
@@ -300,9 +304,110 @@ namespace Zraxion.Extension
             refreshButton.Click +=
                 OnRefreshButtonClick;
 
+            copyButton = new Button
+            {
+                AutoSize = true,
+                Text = "Copy",
+                FlatStyle = FlatStyle.Flat,
+                Margin = new Padding(0, 4, 0, 0),
+                Padding = new Padding(5, 0, 5, 0),
+                Height = 25
+            };
+
+            copyButton.FlatAppearance.BorderSize = 0;
+
+            actionToolTip.SetToolTip(
+                copyButton,
+                "Copy the current Analytics Bar view using exact invariant numeric values.");
+
+            copyButton.Click += (_, __) =>
+            {
+                var summary =
+                    BuildCurrentViewCopySummary();
+
+                if (!string.IsNullOrWhiteSpace(
+                        summary))
+                {
+                    CopyTextAfterMenuCloses(
+                        summary);
+                }
+            };
+
             var newMetricsMenu = new ContextMenuStrip
             {
-                ShowItemToolTips = true
+                // Built-in ToolStrip tooltips can overlap the menu item that
+                // the user is trying to click. We render them outside the
+                // drop-down instead.
+                ShowItemToolTips = false
+            };
+
+            var metricsMenuToolTip = new ToolTip
+            {
+                InitialDelay = 350,
+                ReshowDelay = 100,
+                AutoPopDelay = 6000,
+                ShowAlways = true
+            };
+
+            void ShowMenuItemToolTip(
+                ToolStripItem item)
+            {
+                if (string.IsNullOrWhiteSpace(
+                        item.ToolTipText) ||
+                    IsDisposed ||
+                    !IsHandleCreated)
+                {
+                    return;
+                }
+
+                metricsMenuToolTip.Hide(
+                    this);
+
+                // The View menu normally opens near the right edge of SSMS.
+                // Put the tooltip well to the LEFT of the menu so it never
+                // covers the item being selected.
+                var menuTopLeft =
+                    newMetricsMenu.PointToScreen(
+                        Point.Empty);
+
+                var workingArea =
+                    Screen.FromControl(
+                        newMetricsMenu)
+                    .WorkingArea;
+
+                var tooltipX =
+                    Math.Max(
+                        workingArea.Left + 8,
+                        menuTopLeft.X - 360);
+
+                var tooltipY =
+                    menuTopLeft.Y +
+                    Math.Max(
+                        0,
+                        item.Bounds.Top);
+
+                var localPoint =
+                    PointToClient(
+                        new Point(
+                            tooltipX,
+                            tooltipY));
+
+                metricsMenuToolTip.Show(
+                    item.ToolTipText,
+                    this,
+                    localPoint,
+                    6000);
+            }
+
+            void HideMenuItemToolTip()
+            {
+                metricsMenuToolTip.Hide(
+                    this);
+            }
+
+            newMetricsMenu.Closed += (_, __) =>
+            {
+                HideMenuItemToolTip();
             };
 
             var showSelectionMetricsItem =
@@ -311,6 +416,10 @@ namespace Zraxion.Extension
                     ToolTipText =
                         "Show analytics for the cells currently selected in the Results Grid."
                 };
+
+            showSelectionMetricsItem.MouseEnter +=
+                (_, __) => ShowMenuItemToolTip(
+                    showSelectionMetricsItem);
 
             showSelectionMetricsItem.Click += (_, __) =>
             {
@@ -330,6 +439,10 @@ namespace Zraxion.Extension
                     ToolTipText =
                         "Show the saved comparison baseline A without changing or recalculating it."
                 };
+
+            showBaselineMenuItem.MouseEnter +=
+                (_, __) => ShowMenuItemToolTip(
+                    showBaselineMenuItem);
 
             showBaselineMenuItem.Click += (_, __) =>
             {
@@ -355,6 +468,10 @@ namespace Zraxion.Extension
                         "Show the most recent A-versus-B comparison result."
                 };
 
+            showComparisonMenuItem.MouseEnter +=
+                (_, __) => ShowMenuItemToolTip(
+                    showComparisonMenuItem);
+
             showComparisonMenuItem.Click += (_, __) =>
             {
                 if (lastComparison is null)
@@ -375,9 +492,7 @@ namespace Zraxion.Extension
             newMetricsMenu.Items.Add(
                 new ToolStripMenuItem("Visible selection metrics")
                 {
-                    Enabled = false,
-                    ToolTipText =
-                        "Choose which metrics are visible when the bar is in Selection metrics view."
+                    Enabled = false
                 });
 
             var sumItem =
@@ -573,6 +688,7 @@ namespace Zraxion.Extension
 
             actionsLayout.Controls.Add(autoRefreshCheckBox);
             actionsLayout.Controls.Add(refreshButton);
+            actionsLayout.Controls.Add(copyButton);
             actionsLayout.Controls.Add(metricsButton);
 
             rootLayout.Controls.Add(metricsLayout, 0, 0);
@@ -659,6 +775,12 @@ namespace Zraxion.Extension
             {
                 throw new ArgumentNullException(nameof(summary));
             }
+
+            lastSelectionResultIndex =
+                resultIndex;
+
+            lastSelectionSummary =
+                summary;
 
             resultLabel.Text = $"Result {resultIndex}";
 
@@ -884,6 +1006,9 @@ namespace Zraxion.Extension
             nonNumericLabel.Text = "NON-NUMERIC  0";
 
             compareLabel.Text = string.Empty;
+
+            lastSelectionSummary = null;
+            lastSelectionResultIndex = 0;
 
             lastBaseline = null;
             lastBaselineMetadata = null;
@@ -1267,6 +1392,74 @@ namespace Zraxion.Extension
             copySummaryItem.Enabled =
                 !string.IsNullOrWhiteSpace(
                     compareLabel.Text);
+        }
+
+        private string BuildCurrentViewCopySummary()
+        {
+            if (comparisonMode ||
+                baselineMode)
+            {
+                return
+                    BuildExactCopySummary();
+            }
+
+            var summary =
+                lastSelectionSummary;
+
+            if (summary is null)
+            {
+                return string.Empty;
+            }
+
+            var average =
+                summary.Average.HasValue
+                    ? ExactDecimalFormatter
+                        .FormatInvariant(
+                            summary.Average.Value)
+                    : "N/A";
+
+            var minimum =
+                summary.Min.HasValue
+                    ? ExactDecimalFormatter
+                        .FormatInvariant(
+                            summary.Min.Value)
+                    : "N/A";
+
+            var maximum =
+                summary.Max.HasValue
+                    ? ExactDecimalFormatter
+                        .FormatInvariant(
+                            summary.Max.Value)
+                    : "N/A";
+
+            return
+                "SELECTION" +
+                " | Result=" +
+                lastSelectionResultIndex
+                    .ToString(
+                        CultureInfo.InvariantCulture) +
+                " | SUM=" +
+                ExactDecimalFormatter
+                    .FormatInvariant(
+                        summary.Sum) +
+                " | COUNT=" +
+                summary.NumericCount
+                    .ToString(
+                        CultureInfo.InvariantCulture) +
+                " | AVG=" +
+                average +
+                " | MIN=" +
+                minimum +
+                " | MAX=" +
+                maximum +
+                " | NULL=" +
+                summary.NullOrEmptyCount
+                    .ToString(
+                        CultureInfo.InvariantCulture) +
+                " | NON-NUMERIC=" +
+                summary.NonNumericCount
+                    .ToString(
+                        CultureInfo.InvariantCulture);
         }
 
         private void CopySummaryAfterMenuCloses()

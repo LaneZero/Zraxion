@@ -642,10 +642,6 @@ namespace Zraxion.Extension
                     resultIndex,
                     summary);
             }
-            catch (OverflowException)
-            {
-                state.Bar.Reset();
-            }
             catch (InvalidOperationException)
             {
                 state.Bar.Reset();
