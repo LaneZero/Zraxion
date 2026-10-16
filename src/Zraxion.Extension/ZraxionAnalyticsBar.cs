@@ -737,12 +737,22 @@ namespace Zraxion.Extension
                     ? "✓ MATCH"
                     : "⚠ MISMATCH";
 
+            var tolerance =
+                FormatTolerance(
+                    comparison.TolerancePolicy);
+
+            var reason =
+                FormatMatchReason(
+                    comparison.MatchReason);
+
             compareLabel.Text =
                 $"COMPARE  A {FormatNumber(comparison.Left.Sum)}" +
                 $" → B {FormatNumber(comparison.Right.Sum)}" +
                 $"   |   Δ {FormatSignedNumber(comparison.Difference)}" +
                 $" ({percent})" +
-                $"   |   {status}";
+                $"   |   TOL {tolerance}" +
+                $"   |   {status}" +
+                $" · {reason}";
 
             ApplyCurrentView();
         }
@@ -779,8 +789,9 @@ namespace Zraxion.Extension
             lastBaselineMetadata = null;
             lastComparison = null;
 
+            // Stay in an explicitly cleared state until the user chooses
+            // another view or starts a new baseline/compare action.
             clearedMode = true;
-            clearedMode = false;
             baselineMode = false;
             comparisonMode = false;
             focusedMetric = null;
@@ -1088,6 +1099,60 @@ namespace Zraxion.Extension
             }
         }
 
+
+        private static string FormatTolerance(
+            GridComparisonTolerancePolicy tolerancePolicy)
+        {
+            if (tolerancePolicy.IsExact)
+            {
+                return "EXACT";
+            }
+
+            var absolute =
+                tolerancePolicy.AbsoluteTolerance;
+
+            var percentage =
+                tolerancePolicy.PercentageTolerance;
+
+            if (absolute.HasValue &&
+                percentage.HasValue)
+            {
+                return
+                    $"±{FormatNumber(absolute.Value)} OR " +
+                    $"±{FormatNumber(percentage.Value)}%";
+            }
+
+            if (absolute.HasValue)
+            {
+                return
+                    $"±{FormatNumber(absolute.Value)}";
+            }
+
+            return
+                $"±{FormatNumber(percentage!.Value)}%";
+        }
+
+        private static string FormatMatchReason(
+            GridComparisonMatchReason matchReason)
+        {
+            switch (matchReason)
+            {
+                case GridComparisonMatchReason.ExactMatch:
+                    return "EXACT";
+
+                case GridComparisonMatchReason.WithinAbsoluteTolerance:
+                    return "ABS TOL";
+
+                case GridComparisonMatchReason.WithinPercentageTolerance:
+                    return "% TOL";
+
+                case GridComparisonMatchReason.WithinCombinedTolerance:
+                    return "ABS + % TOL";
+
+                default:
+                    return "DIFFERENCE";
+            }
+        }
 
         private void UpdateComparisonCopyMenuState()
         {

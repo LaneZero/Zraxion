@@ -28,6 +28,12 @@ namespace Zraxion.Extension
         public static bool HasBaseline =>
             LeftSnapshot is not null;
 
+        public static GridComparisonTolerancePolicy TolerancePolicy
+        {
+            get;
+            private set;
+        } = GridComparisonTolerancePolicy.Exact;
+
         public static void SetLeft(
             GridAnalyticsSnapshot snapshot)
         {
@@ -59,6 +65,15 @@ namespace Zraxion.Extension
                     UiColumnIndex = uiColumnIndex,
                     CapturedAtUtc = snapshot.CapturedAtUtc
                 };
+        }
+
+        public static void SetTolerancePolicy(
+            GridComparisonTolerancePolicy tolerancePolicy)
+        {
+            TolerancePolicy =
+                tolerancePolicy ??
+                throw new ArgumentNullException(
+                    nameof(tolerancePolicy));
         }
 
         public static void Clear()

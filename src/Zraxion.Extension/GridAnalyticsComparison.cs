@@ -16,22 +16,51 @@ namespace Zraxion.Extension
 
         public bool IsMatch { get; }
 
+        public GridComparisonMatchReason MatchReason { get; }
+
+        public GridComparisonTolerancePolicy TolerancePolicy { get; }
+
         public GridAnalyticsComparison(
             GridAnalyticsSnapshot left,
             GridAnalyticsSnapshot right)
+            : this(
+                left,
+                right,
+                GridComparisonTolerancePolicy.Exact)
         {
-            Left = left ?? throw new ArgumentNullException(nameof(left));
-            Right = right ?? throw new ArgumentNullException(nameof(right));
+        }
 
-            Difference = Right.Sum - Left.Sum;
-            AbsoluteDifference = Math.Abs(Difference);
+        public GridAnalyticsComparison(
+            GridAnalyticsSnapshot left,
+            GridAnalyticsSnapshot right,
+            GridComparisonTolerancePolicy tolerancePolicy)
+        {
+            Left =
+                left ??
+                throw new ArgumentNullException(
+                    nameof(left));
 
-            DifferencePercent =
-                Left.Sum == 0m
-                    ? null
-                    : (Difference / Left.Sum) * 100m;
+            Right =
+                right ??
+                throw new ArgumentNullException(
+                    nameof(right));
 
-            IsMatch = Difference == 0m;
+            TolerancePolicy =
+                tolerancePolicy ??
+                throw new ArgumentNullException(
+                    nameof(tolerancePolicy));
+
+            var evaluation =
+                GridComparisonEvaluator.Evaluate(
+                    Left,
+                    Right,
+                    TolerancePolicy);
+
+            Difference = evaluation.Difference;
+            AbsoluteDifference = evaluation.AbsoluteDifference;
+            DifferencePercent = evaluation.DifferencePercent;
+            IsMatch = evaluation.IsMatch;
+            MatchReason = evaluation.MatchReason;
         }
     }
 }

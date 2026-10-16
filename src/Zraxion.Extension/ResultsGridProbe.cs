@@ -1289,12 +1289,25 @@ public static string InspectResultsPaneChildren()
                     "The current selection does not contain numeric values.";
             }
 
-            var comparison =
-                new GridAnalyticsComparison(
-                    baseline,
-                    current);
+            GridAnalyticsComparison comparison;
+
+            try
+            {
+                comparison =
+                    new GridAnalyticsComparison(
+                        baseline,
+                        current,
+                        GridComparisonSession.TolerancePolicy);
+            }
+            catch (OverflowException)
+            {
+                return
+                    "The comparison could not be completed because " +
+                    "the calculated difference exceeds the supported decimal range.";
+            }
+
             GridAnalyticsBarManager.ShowComparison(
-             comparison);
+                comparison);
 
            
 

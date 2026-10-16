@@ -208,6 +208,16 @@ namespace Zraxion.Extension
                 "Compare Selection with A",
                 OnCompareClick);
 
+            var toleranceButton =
+                AddSeparatorButton(
+                    comparePopup,
+                    FormatToleranceMenuCaption(
+                        GridComparisonSession.TolerancePolicy),
+                    OnToleranceClick);
+
+            toleranceButton.TooltipText =
+                "Configure exact, absolute, percentage, or combined tolerance for A-versus-B comparison.";
+
             AddSeparatorButton(
                 comparePopup,
                 "Clear Baseline A",
@@ -242,7 +252,7 @@ namespace Zraxion.Extension
             popups.Clear();
         }
 
-        private static void AddSeparatorButton(
+        private static CommandBarButton AddSeparatorButton(
             CommandBarPopup parent,
             string caption,
             _CommandBarButtonEvents_ClickEventHandler handler)
@@ -254,6 +264,7 @@ namespace Zraxion.Extension
                     handler);
 
             button.BeginGroup = true;
+            return button;
         }
 
         private static CommandBarButton AddButton(
@@ -418,7 +429,8 @@ namespace Zraxion.Extension
                     StringComparison.Ordinal))
             {
                 // No success modal. The analytics bar is the feedback surface.
-                GridAnalyticsBarManager.ShowBaseline();
+                GridAnalyticsBarManager.AttachToCurrentResults(
+                    showSelectionMetrics: true);
 
                 return;
             }
@@ -451,6 +463,73 @@ namespace Zraxion.Extension
                 "Zraxion - Compare Selection with A",
                 MessageBoxButtons.OK,
                 MessageBoxIcon.Warning);
+        }
+
+        private static void OnToleranceClick(
+            CommandBarButton ctrl,
+            ref bool cancelDefault)
+        {
+            cancelDefault = true;
+
+            if (!GridComparisonToleranceDialog.TryShow(
+                    GridComparisonSession.TolerancePolicy,
+                    out var tolerancePolicy))
+            {
+                return;
+            }
+
+            GridComparisonSession.SetTolerancePolicy(
+                tolerancePolicy);
+
+            ctrl.Caption =
+                FormatToleranceMenuCaption(
+                    tolerancePolicy);
+
+            ctrl.TooltipText =
+                "Current comparison tolerance: " +
+                FormatToleranceDescription(
+                    tolerancePolicy);
+        }
+
+        private static string FormatToleranceMenuCaption(
+            GridComparisonTolerancePolicy tolerancePolicy)
+        {
+            return
+                "Tolerance: " +
+                FormatToleranceDescription(
+                    tolerancePolicy) +
+                "...";
+        }
+
+        private static string FormatToleranceDescription(
+            GridComparisonTolerancePolicy tolerancePolicy)
+        {
+            if (tolerancePolicy.IsExact)
+            {
+                return "Exact";
+            }
+
+            var absolute =
+                tolerancePolicy.AbsoluteTolerance;
+
+            var percentage =
+                tolerancePolicy.PercentageTolerance;
+
+            if (absolute.HasValue &&
+                percentage.HasValue)
+            {
+                return
+                    $"±{absolute.Value:G29} OR ±{percentage.Value:G29}%";
+            }
+
+            if (absolute.HasValue)
+            {
+                return
+                    $"±{absolute.Value:G29}";
+            }
+
+            return
+                $"±{percentage!.Value:G29}%";
         }
 
         private static void OnClearBaselineClick(
