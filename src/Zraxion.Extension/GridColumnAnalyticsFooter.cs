@@ -13,6 +13,8 @@ namespace Zraxion.Extension
         private readonly Font valueFont;
         private readonly ContextMenuStrip copyMenu;
 
+        private ZraxionThemePalette themePalette;
+
         private string metric = string.Empty;
         private string displayValue = string.Empty;
         private string copyValue = string.Empty;
@@ -21,9 +23,17 @@ namespace Zraxion.Extension
         {
             Name = "ZraxionGridColumnAnalyticsFooter";
 
-            Height = 24;
-            BackColor = SystemColors.Control;
-            ForeColor = SystemColors.ControlText;
+            Height = 22;
+
+            themePalette =
+                ZraxionTheme.Resolve(
+                    null);
+
+            BackColor =
+                themePalette.Background;
+
+            ForeColor =
+                themePalette.Foreground;
 
             valueFont = new Font(
                 SystemFonts.MessageBoxFont,
@@ -34,7 +44,7 @@ namespace Zraxion.Extension
                 Dock = DockStyle.Fill,
                 AutoEllipsis = true,
                 TextAlign = ContentAlignment.MiddleRight,
-                Padding = new Padding(5, 0, 6, 0),
+                Padding = new Padding(4, 0, 5, 0),
                 BackColor = BackColor,
                 ForeColor = ForeColor,
                 Font = valueFont,
@@ -68,6 +78,8 @@ namespace Zraxion.Extension
 
             Controls.Add(valueLabel);
 
+            ApplyThemeFromParent();
+
             Visible = false;
         }
 
@@ -85,7 +97,7 @@ namespace Zraxion.Extension
 
                 return measured.Width +
                     valueLabel.Padding.Horizontal +
-                    14;
+                    10;
             }
         }
 
@@ -118,7 +130,7 @@ namespace Zraxion.Extension
             toolTip.SetToolTip(
                 valueLabel,
                 text + Environment.NewLine +
-                "Double-click: Copy Value");
+                "Double-click to copy the raw value.");
 
             AccessibleName =
                 $"Zraxion {this.metric} footer";
@@ -130,7 +142,7 @@ namespace Zraxion.Extension
             base.OnPaint(e);
 
             using (var borderPen =
-                new Pen(SystemColors.ControlDark))
+                new Pen(themePalette.Border))
             {
                 e.Graphics.DrawLine(
                     borderPen,
@@ -140,6 +152,46 @@ namespace Zraxion.Extension
                     0);
             }
         }
+
+        protected override void OnParentChanged(
+            EventArgs e)
+        {
+            base.OnParentChanged(e);
+            ApplyThemeFromParent();
+        }
+
+        protected override void OnSystemColorsChanged(
+            EventArgs e)
+        {
+            base.OnSystemColorsChanged(e);
+            ApplyThemeFromParent();
+        }
+
+        private void ApplyThemeFromParent()
+        {
+            themePalette =
+                ZraxionTheme.Resolve(
+                    Parent);
+
+            BackColor =
+                themePalette.Background;
+
+            ForeColor =
+                themePalette.Foreground;
+
+            valueLabel.BackColor =
+                themePalette.Background;
+
+            valueLabel.ForeColor =
+                themePalette.Foreground;
+
+            ZraxionTheme.ApplyToMenu(
+                copyMenu,
+                themePalette);
+
+            Invalidate();
+        }
+
 
         private void OnValueLabelDoubleClick(
             object? sender,

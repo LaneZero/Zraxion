@@ -44,6 +44,8 @@ namespace Zraxion.Extension
         private bool clearedMode;
         private string? focusedMetric;
 
+        private ZraxionThemePalette themePalette;
+
 
         private readonly Control sumSeparator;
         private readonly Control countSeparator;
@@ -69,7 +71,7 @@ namespace Zraxion.Extension
 
             Name = "ZraxionAnalyticsBar";
 
-            Height = 38;
+            Height = 34;
             Dock = DockStyle.None;
 
             Anchor =
@@ -77,12 +79,19 @@ namespace Zraxion.Extension
                 AnchorStyles.Right |
                 AnchorStyles.Bottom;
 
-            BackColor = Color.White;
-            ForeColor = Color.FromArgb(35, 35, 35);
+            themePalette =
+                ZraxionTheme.Resolve(
+                    null);
+
+            BackColor =
+                themePalette.Background;
+
+            ForeColor =
+                themePalette.Foreground;
 
             BorderStyle = BorderStyle.FixedSingle;
 
-            Padding = new Padding(10, 0, 8, 0);
+            Padding = new Padding(8, 0, 6, 0);
 
             var rootLayout = new TableLayoutPanel
             {
@@ -183,8 +192,7 @@ namespace Zraxion.Extension
                 (_, __) => CopyComparisonValue("PERCENT");
 
             copySummaryItem.Click +=
-                (_, __) => TryCopyToClipboard(
-                    compareLabel.Text);
+                (_, __) => CopySummaryAfterMenuCloses();
 
             comparisonCopyMenu.Items.Add(copyAItem);
             comparisonCopyMenu.Items.Add(copyBItem);
@@ -260,7 +268,7 @@ namespace Zraxion.Extension
                 AutoSize = true,
                 Text = "Auto",
                 Checked = displayOptions.AutoRefresh,
-                Margin = new Padding(6, 8, 8, 0)
+                Margin = new Padding(6, 6, 8, 0)
             };
 
             actionToolTip.SetToolTip(
@@ -275,14 +283,14 @@ namespace Zraxion.Extension
                 AutoSize = true,
                 Text = "Refresh",
                 FlatStyle = FlatStyle.Flat,
-                Margin = new Padding(0, 5, 0, 0),
-                Padding = new Padding(6, 0, 6, 0),
-                Height = 26
+                Margin = new Padding(0, 4, 0, 0),
+                Padding = new Padding(5, 0, 5, 0),
+                Height = 25
             };
 
 
 
-            refreshButton.FlatAppearance.BorderSize = 1;
+            refreshButton.FlatAppearance.BorderSize = 0;
 
 
             actionToolTip.SetToolTip(
@@ -537,12 +545,12 @@ namespace Zraxion.Extension
                 AutoSize = true,
                 Text = "View",
                 FlatStyle = FlatStyle.Flat,
-                Margin = new Padding(6, 5, 0, 0),
-                Padding = new Padding(6, 0, 6, 0),
-                Height = 26
+                Margin = new Padding(5, 4, 0, 0),
+                Padding = new Padding(5, 0, 5, 0),
+                Height = 25
             };
 
-            newMetricsButton.FlatAppearance.BorderSize = 1;
+            newMetricsButton.FlatAppearance.BorderSize = 0;
 
             actionToolTip.SetToolTip(
                 newMetricsButton,
@@ -572,6 +580,7 @@ namespace Zraxion.Extension
 
             Controls.Add(rootLayout);
 
+            ApplyThemeFromParent();
             Reset();
         }
 
@@ -581,6 +590,66 @@ namespace Zraxion.Extension
 
         public bool AutoRefreshEnabled =>
             autoRefreshCheckBox.Checked;
+
+        protected override void OnParentChanged(
+            EventArgs e)
+        {
+            base.OnParentChanged(e);
+            ApplyThemeFromParent();
+        }
+
+        protected override void OnSystemColorsChanged(
+            EventArgs e)
+        {
+            base.OnSystemColorsChanged(e);
+            ApplyThemeFromParent();
+        }
+
+        private void ApplyThemeFromParent()
+        {
+            themePalette =
+                ZraxionTheme.Resolve(
+                    Parent);
+
+            ZraxionTheme.ApplyToControlTree(
+                this,
+                themePalette);
+
+            foreach (var separator in GetSeparators())
+            {
+                separator.BackColor =
+                    themePalette.Background;
+
+                separator.ForeColor =
+                    themePalette.MutedForeground;
+            }
+
+            ZraxionTheme.ApplyToMenu(
+                metricsMenu,
+                themePalette);
+
+            ZraxionTheme.ApplyToMenu(
+                comparisonCopyMenu,
+                themePalette);
+
+            Invalidate();
+        }
+
+        private Control[] GetSeparators()
+        {
+            return new[]
+            {
+                sumSeparator,
+                countSeparator,
+                averageSeparator,
+                compareSeparator,
+                minSeparator,
+                maxSeparator,
+                nullSeparator,
+                nonNumericSeparator
+            };
+        }
+
 
         public void UpdateAnalytics(
             int resultIndex,
@@ -695,7 +764,7 @@ namespace Zraxion.Extension
 
             compareLabel.Text =
                 $"BASELINE A   SUM {FormatNumber(baseline.Sum)}" +
-                $"   |   COUNT {baseline.NumericCount:N0}" +
+                $"   COUNT {baseline.NumericCount:N0}" +
                 context;
 
             ApplyCurrentView();
@@ -746,13 +815,12 @@ namespace Zraxion.Extension
                     comparison.MatchReason);
 
             compareLabel.Text =
-                $"COMPARE  A {FormatNumber(comparison.Left.Sum)}" +
-                $" → B {FormatNumber(comparison.Right.Sum)}" +
-                $"   |   Δ {FormatSignedNumber(comparison.Difference)}" +
+                $"COMPARE   A {FormatNumber(comparison.Left.Sum)}" +
+                $"  →  B {FormatNumber(comparison.Right.Sum)}" +
+                $"   Δ {FormatSignedNumber(comparison.Difference)}" +
                 $" ({percent})" +
-                $"   |   TOL {tolerance}" +
-                $"   |   {status}" +
-                $" · {reason}";
+                $"   TOL {tolerance}" +
+                $"   {status} · {reason}";
 
             ApplyCurrentView();
         }
@@ -996,7 +1064,7 @@ namespace Zraxion.Extension
                     SystemFonts.MessageBoxFont,
                     FontStyle.Bold),
                 TextAlign = ContentAlignment.MiddleLeft,
-                Margin = new Padding(2, 10, 8, 0)
+                Margin = new Padding(2, 8, 6, 0)
             };
         }
 
@@ -1006,7 +1074,7 @@ namespace Zraxion.Extension
             {
                 AutoSize = true,
                 TextAlign = ContentAlignment.MiddleLeft,
-                Margin = new Padding(8, 10, 8, 0)
+                Margin = new Padding(6, 8, 6, 0)
             };
         }
 
@@ -1015,9 +1083,9 @@ namespace Zraxion.Extension
             return new Label
             {
                 AutoSize = true,
-                Text = "│",
-                ForeColor = Color.FromArgb(180, 180, 180),
-                Margin = new Padding(2, 10, 2, 0)
+                Text = "·",
+                ForeColor = SystemColors.GrayText,
+                Margin = new Padding(1, 8, 1, 0)
             };
         }
 
@@ -1181,6 +1249,49 @@ namespace Zraxion.Extension
                     compareLabel.Text);
         }
 
+        private void CopySummaryAfterMenuCloses()
+        {
+            var summary =
+                compareLabel.Text;
+
+            if (string.IsNullOrWhiteSpace(
+                    summary))
+            {
+                return;
+            }
+
+            // SSMS/WinForms can still be finishing the ContextMenuStrip click
+            // transaction when the first clipboard write is attempted.
+            // Queue the copy to the next UI turn so the menu has fully closed.
+            if (IsHandleCreated &&
+                !IsDisposed)
+            {
+                try
+                {
+                    BeginInvoke(
+                        new Action(
+                            () =>
+                            {
+                                if (!IsDisposed)
+                                {
+                                    TryCopyToClipboard(
+                                        summary);
+                                }
+                            }));
+
+                    return;
+                }
+                catch (InvalidOperationException)
+                {
+                    // Fall through to the direct retry path.
+                }
+            }
+
+            TryCopyToClipboard(
+                summary);
+        }
+
+
         private void CopyComparisonValue(
             string valueKind)
         {
@@ -1256,19 +1367,21 @@ namespace Zraxion.Extension
             }
 
             for (var attempt = 0;
-                 attempt < 3;
+                 attempt < 5;
                  attempt++)
             {
                 try
                 {
-                    Clipboard.SetText(text);
+                    Clipboard.SetText(
+                        text);
+
                     return true;
                 }
                 catch (ExternalException)
                 {
-                    if (attempt < 2)
+                    if (attempt < 4)
                     {
-                        Thread.Sleep(25);
+                        Thread.Sleep(40);
                     }
                 }
             }
